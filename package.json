@@ -1,0 +1,11 @@
+{
+  "name": "fable-werkschau",
+  "private": true,
+  "description": "Eine Selbstvorstellung mit sechs Demos, einem Modellvergleich und einem Modell-Kompass. Eine einzige HTML-Datei, keine Laufzeit-Abhängigkeiten.",
+  "license": "MIT",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node tests/run.mjs",
+    "test:browser": "node build.mjs && node tests/smoke.mjs"
+  }
+}

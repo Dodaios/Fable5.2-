@@ -1,0 +1,80 @@
+/* Fabel: Editor links, Ansichten rechts; unter 780 px untereinander. */
+.d-sprache { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.1rem; align-items: start; }
+@media (max-width: 780px) { .d-sprache { grid-template-columns: minmax(0, 1fr); } }
+.d-sprache-spalte { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; min-width: 0; align-content: start; }
+.d-sprache-spalte > .demo-bar { min-height: 2.5rem; }
+.d-sprache-auswahl { width: auto; flex: 1 1 11rem; min-width: 0; }
+.d-sprache-mess { flex: 1 1 100%; font-variant-numeric: tabular-nums; }
+@media (min-width: 1000px) { .d-sprache-mess { flex: 0 1 auto; } }
+.d-sprache-mess--fehler { color: var(--crit); font-weight: 600; }
+
+.d-sprache-editor {
+  display: flex; height: 23rem; min-width: 0;
+  border: 1px solid var(--line-strong); border-radius: var(--radius);
+  background: var(--surface); overflow: hidden;
+}
+.d-sprache-editor:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.d-sprache-nummern, textarea.d-sprache-feld { font: 500 0.8rem/1.55 var(--font-mono); padding-block: 0.7rem; }
+.d-sprache-nummern {
+  flex: 0 0 auto; min-width: 2.7em; padding-inline: 0.6em 0.55em;
+  text-align: right; color: var(--ink-3); background: var(--surface-2);
+  border-right: 1px solid var(--line); overflow: hidden; user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+.d-sprache-nr { display: block; }
+.d-sprache-nr--fehler { color: var(--crit); font-weight: 700; }
+textarea.d-sprache-feld {
+  flex: 1 1 auto; min-width: 0; width: auto; height: 100%;
+  border: 0; border-radius: 0; resize: none; outline: none;
+  padding-inline: 0.7rem; background: transparent; color: var(--ink);
+  white-space: pre; overflow: auto; tab-size: 2;
+}
+
+.d-sprache-ref { font-size: 0.86rem; color: var(--ink-2); }
+.d-sprache-ref summary { cursor: pointer; font-weight: 600; padding-block: 0.15rem; width: fit-content; }
+.d-sprache-ref .code { margin-top: 0.5rem; font-size: 0.74rem; }
+
+.d-sprache-flaeche {
+  height: 23rem; margin: 0; overflow: auto; min-width: 0;
+  padding: 0.75rem 0.9rem; border-radius: var(--radius);
+  background: var(--surface-2); color: var(--ink);
+  font: 500 0.8rem/1.55 var(--font-mono);
+}
+.d-sprache-ausgabe, .d-sprache-auszug { margin: 0; font: inherit; white-space: pre; tab-size: 2; }
+.d-sprache-baum { white-space: pre; line-height: 1.3; }
+
+.d-sprache-fehler {
+  margin-top: 0.75rem; padding: 0.6rem 0.75rem; min-width: 0;
+  position: sticky; left: 0;
+  border-left: 3px solid var(--crit); border-radius: 0 var(--radius) var(--radius) 0;
+  background: color-mix(in srgb, var(--crit) 10%, var(--surface));
+}
+.d-sprache-ausgabe[hidden] + .d-sprache-fehler { margin-top: 0; }
+.d-sprache-fehlertitel { font-family: var(--font-body); font-size: 0.86rem; line-height: 1.45; white-space: normal; overflow-wrap: anywhere; }
+.d-sprache-fehlertitel strong { color: var(--crit); }
+.d-sprache-auszug { margin-top: 0.5rem; color: var(--ink-2); overflow-x: auto; padding-bottom: 0.15rem; }
+.d-sprache-hinweis { margin-top: 0.6rem; font-family: var(--font-body); font-size: 0.84rem; color: var(--crit); }
+
+.d-sprache-legende { font-family: var(--font-body); margin-bottom: 0.6rem; line-height: 2; }
+.d-sprache-tokzeile { display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: baseline; padding-block: 0.14rem; }
+.d-sprache-toknr { flex: 0 0 2.2em; text-align: right; padding-right: 0.5em; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.d-sprache-tok {
+  display: inline-block; padding: 0.02em 0.42em; border-radius: 4px;
+  border: 1px solid transparent; font: 500 0.76rem/1.5 var(--font-mono); white-space: pre;
+}
+.d-sprache-tok--kw { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.d-sprache-tok--name { background: var(--surface); color: var(--ink); border-color: var(--line); }
+.d-sprache-tok--wert { background: color-mix(in srgb, var(--sun) 38%, var(--surface)); color: var(--ink); }
+.d-sprache-tok--op { border-color: var(--line-strong); color: var(--ink-2); }
+
+/* Keine Ligaturen: `<=`, `==` und `!=` sollen so aussehen, wie sie getippt wurden.
+   Steht bewusst hinter allen `font:`-Kurzschreibweisen, weil die diese Eigenschaften zurücksetzen. */
+textarea.d-sprache-feld, .d-sprache-flaeche, .d-sprache-tok, .d-sprache-ref .code {
+  font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0;
+}
+.d-sprache-baum--leer { white-space: pre-wrap; font-family: var(--font-body); font-size: 0.86rem; }
+
+@media (max-width: 780px) {
+  .d-sprache-editor { height: 17rem; }
+  .d-sprache-flaeche { height: auto; min-height: 8rem; max-height: 23rem; }
+}

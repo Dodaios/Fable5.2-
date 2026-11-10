@@ -1,0 +1,383 @@
+<!--HEAD-->
+<title>Fable 5.2 Werkschau</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=Instrument+Sans:wght@400..700&family=JetBrains+Mono:wght@400..700&display=swap">
+<!--CSS-->
+<!--/HEAD-->
+<div class="page" lang="de">
+<a class="skip" href="#vorstellung">Zum Inhalt springen</a>
+
+<header class="nav" id="top">
+  <div class="wrap nav-in">
+    <a class="nav-brand" href="#top">Fable 5.2 <span>Werkschau</span></a>
+    <nav class="nav-links" aria-label="Kapitel">
+      <a href="#vorstellung">Vorstellung</a>
+      <a href="#demos">Demos</a>
+      <a href="#vergleich">Vergleich</a>
+      <a href="#kompass">Kompass</a>
+      <a href="#selbsttest">Selbsttest</a>
+      <a href="#werkstatt">Werkstatt</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="wrap hero-in">
+    <div class="hero-copy">
+      <p class="hero-kicker">Selbstvorstellung eines KI-Modells</p>
+      <h1 id="hero-title">Hallo, ich bin <span class="hero-name">Fable 5.2.</span></h1>
+      <p class="hero-lead">Du hast mir ein leeres Repository gegeben. In einer einzigen Session habe ich daraus diese Seite gebaut: sechs Arbeitsproben zum Anfassen, einen ehrlichen Vergleich mit Opus 5.5 und einen Kompass, der dir sagt, wann du welches Modell nimmst.</p>
+      <div class="hero-cta">
+        <a class="btn btn--sun" href="#demos">Demos ausprobieren</a>
+        <a class="btn hero-btn" href="#kompass">Welches Modell wofür?</a>
+      </div>
+    </div>
+    <figure class="hero-fig">
+      <div class="hero-orb" id="hero-orb">
+        <canvas id="hero-canvas" aria-label="Eine schwebende, sich verformende Lichtgestalt, live berechnet"></canvas>
+      </div>
+      <figcaption id="hero-caption">Live berechnet von einem Shader, den ich von Hand geschrieben habe. Zieh daran.</figcaption>
+    </figure>
+  </div>
+  <div class="wrap">
+    <dl class="specs">
+      <div><dt>Kontextfenster</dt><dd>1 Mio. <small>Tokens</small></dd></div>
+      <div><dt>Längste Antwort</dt><dd>128.000 <small>Tokens</small></dd></div>
+      <div><dt>Preis je Mio. Tokens</dt><dd>$8 <small>rein</small> · $40 <small>raus</small></dd></div>
+      <div><dt>Wissensstand</dt><dd>Juni 2026</dd></div>
+    </dl>
+  </div>
+</section>
+
+<main>
+
+<!-- ============ Vorstellung ============ -->
+<section class="chapter" id="vorstellung" aria-labelledby="h-vorstellung">
+  <div class="wrap">
+    <p class="eyebrow">Vorstellung</p>
+    <h2 id="h-vorstellung">Wer ich bin und wofür ich gebaut wurde</h2>
+
+    <div class="intro-grid">
+      <div class="prose" id="intro-text">
+        <p>Ich bin das neueste Modell der Claude-5-Familie und das leistungsfähigste, das Anthropic allgemein anbietet. Gebaut bin ich für die schweren Fälle: große, offene Aufgaben in Code, Forschung und Analyse, bei denen Urteilsvermögen zählt und ein Fehler teuer wäre.</p>
+        <p>Ich arbeite gern lange am Stück. Ich plane, probiere aus, prüfe meine Ergebnisse und mache weiter, bis die Sache fertig ist. So ist auch diese Seite entstanden: Fakten recherchiert, Designsystem angelegt, sechs Demos von parallelen Kopien meiner selbst bauen lassen, alles in einem Browser ohne Bildschirm getestet.</p>
+        <p>In der Familie stehen unter mir Opus 5.5, Sonnet 5.5 und Haiku 5.5. Mythos 5.2 ist dasselbe Modell wie ich, nur ohne meine zusätzlichen Schutzmaßnahmen. Es geht ausschließlich an geprüfte Organisationen.</p>
+        <div class="voice" id="voice" hidden>
+          <button class="btn btn--primary" id="voice-btn" type="button">Vorstellung vorlesen</button>
+          <span class="note" id="voice-note">Eine Claude-Stimme liest diesen Text vor.</span>
+        </div>
+      </div>
+
+      <aside class="sheet" aria-label="Steckbrief">
+        <h3>Steckbrief</h3>
+        <dl class="kv sheet-kv">
+          <dt>Name</dt><dd>Claude Fable 5.2</dd>
+          <dt>API-Kennung</dt><dd><code>claude-fable-5-2</code></dd>
+          <dt>Stufe</dt><dd>Mythos-Klasse, über Opus</dd>
+          <dt>Kontextfenster</dt><dd>1 Mio. Tokens</dd>
+          <dt>Längste Antwort</dt><dd>128.000 Tokens</dd>
+          <dt>Preis</dt><dd>$8 / $40 je Mio. Tokens</dd>
+          <dt>Fast Mode</dt><dd>bis 2,5× schneller, $16 / $80</dd>
+          <dt>Denken</dt><dd>immer an, fünf Stufen</dd>
+          <dt>Eingaben</dt><dd>Text und Bilder</dd>
+          <dt>Wissensstand</dt><dd>Juni 2026</dd>
+          <dt>In den Apps</dt><dd>Pro, Max, Ultra, Team, Enterprise</dd>
+        </dl>
+      </aside>
+    </div>
+
+    <div class="trio">
+      <div>
+        <h3>Was in 5.2 neu ist</h3>
+        <ul class="list">
+          <li><strong>Ein Fünftel günstiger.</strong> $8 / $40 je Million Tokens, bei Fable 5.1 waren es $10 / $50.</li>
+          <li><strong>Fast Mode.</strong> Bis zu 2,5-mal schnellere Ausgabe zum doppelten Preis. 5.1 hatte das nicht.</li>
+          <li><strong>Mehr geschaffte Arbeit.</strong> Beim Remote Labor Index, der Aufträge aus echter Remote-Arbeit nachstellt, 41,3 % statt 17,9 %.</li>
+          <li><strong>Sparsam stark.</strong> Auf der niedrigsten Denkstufe lag ich in Anthropics Tests nahe an dem, was 5.1 auf höheren Stufen erreichte.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Wofür du mich holen solltest</h3>
+        <ul class="list">
+          <li>Große, lose beschriebene Programmieraufgaben über mehrere Repositories.</li>
+          <li>Als Leit-Agent, der Teilaufgaben an Subagenten verteilt und deren Ergebnisse prüft.</li>
+          <li>Forschung und Datenanalyse, bei denen Methoden erst gefunden werden müssen.</li>
+          <li>Finanzanalysen und Berichte, die sonst eine Woche dauern.</li>
+          <li>3D, Simulationen, Hardware-Entwürfe, Bewegung.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Was du wissen solltest</h3>
+        <ul class="list">
+          <li><strong>Ich koste das Doppelte von Opus 5.5.</strong> Für Alltagsarbeit ist Opus die bessere erste Wahl.</li>
+          <li><strong>Ich brauche Zeit.</strong> Schwere Aufgaben dauern auf hoher Denkstufe Minuten.</li>
+          <li><strong>Schutzmaßnahmen.</strong> Anfragen zu Cyber-Sicherheit und Biologie, die als riskant markiert werden, beantwortet ein schwächeres Modell oder niemand.</li>
+          <li><strong>Gebremste Felder.</strong> In wenigen Bereichen, die KI-Entwicklung direkt beschleunigen würden, etwa Kernel-Optimierung für KI-Beschleuniger, wurde mein Training bewusst zurückgehalten.</li>
+          <li><strong>Ich mache Fehler.</strong> Lies bei wichtiger Arbeit den Diff, nicht nur meine Zusammenfassung.</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="moral"><span>Moral</span> Ich bin das Werkzeug für die schweren Fälle, nicht für jeden Fall.</p>
+  </div>
+</section>
+
+<!-- ============ Demos ============ -->
+<section class="chapter" id="demos" aria-labelledby="h-demos">
+  <div class="wrap">
+    <p class="eyebrow">Arbeitsproben</p>
+    <h2 id="h-demos">Sechs Dinge, die ich heute für dich gebaut habe</h2>
+    <p class="chapter-lead">Alles hier läuft direkt in deinem Browser, ohne Server und ohne eine einzige fremde Bibliothek. Jede Probe zeigt eine andere Fähigkeit. Fass sie an, mach sie kaputt, schau in den Quelltext.</p>
+
+    <div class="gallery">
+      <div class="gallery-tabs" role="tablist" aria-label="Arbeitsproben" id="demo-tabs"></div>
+      <div class="gallery-panel" role="tabpanel" id="demo-panel" tabindex="-1">
+        <header class="demo-head">
+          <div class="demo-head-top">
+            <h3 id="demo-title">Arbeitsprobe</h3>
+            <span class="chip chip--accent" id="demo-kind"></span>
+          </div>
+          <p id="demo-lead"></p>
+          <div class="demo-facts" id="demo-facts"></div>
+        </header>
+        <div class="stage" id="demo-stage"><p class="note">Die Arbeitsprobe wird geladen.</p></div>
+        <p class="moral moral--sm" id="demo-moral-wrap" hidden><span>Moral</span> <span id="demo-moral"></span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Vergleich ============ -->
+<section class="chapter" id="vergleich" aria-labelledby="h-vergleich">
+  <div class="wrap">
+    <p class="eyebrow">Vergleich</p>
+    <h2 id="h-vergleich">Fable 5.2 oder Opus 5.5?</h2>
+    <p class="chapter-lead">Anthropic empfiehlt Opus 5.5 als Startpunkt für die meiste Alltagsarbeit. Ich bin für das gedacht, was darüber hinausgeht. Hier siehst du, was der Unterschied kostet und was er bringt.</p>
+
+    <div class="table-scroll">
+      <table class="vs">
+        <caption class="sr-only">Fable 5.2 und Opus 5.5 im direkten Vergleich</caption>
+        <thead>
+          <tr><th scope="col"></th><th scope="col"><span class="dot dot--fable"></span>Fable 5.2</th><th scope="col"><span class="dot dot--opus"></span>Opus 5.5</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Gedacht für</th><td>Anspruchsvolles Denken und lange, eigenständige Agentenarbeit</td><td>Lange Agenten-Programmierung und Wissensarbeit im Alltag</td></tr>
+          <tr><th scope="row">Preis je Mio. Tokens</th><td>$8 Eingabe · $40 Ausgabe</td><td>$4 Eingabe · $20 Ausgabe</td></tr>
+          <tr><th scope="row">Fast Mode</th><td>$16 · $80</td><td>$8 · $40</td></tr>
+          <tr><th scope="row">Standard-Denkstufe</th><td><code>high</code></td><td><code>medium</code></td></tr>
+          <tr><th scope="row">Kontext · längste Antwort</th><td>1 Mio. · 128.000 Tokens</td><td>1 Mio. · 128.000 Tokens</td></tr>
+          <tr><th scope="row">Wissensstand</th><td>Juni 2026</td><td>Juni 2026</td></tr>
+          <tr><th scope="row">Tempo laut Anthropic</th><td>mittel</td><td>mittel</td></tr>
+          <tr><th scope="row">Datenaufbewahrung (API)</th><td>30 Tage sind Voraussetzung</td><td>keine solche Vorgabe dokumentiert</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="bm-block">
+      <div class="bm-head">
+        <div>
+          <h3>Was Anthropic gemessen hat</h3>
+          <p class="note">Elf veröffentlichte Tests, Ergebnis in Prozent. Sortiert nach meinem Vorsprung. Ich habe diese Zahlen nicht selbst nachgemessen.</p>
+        </div>
+        <div class="demo-bar">
+          <label class="check"><input type="checkbox" id="bm-prev"> Fable 5.1 einblenden</label>
+          <button class="btn btn--sm" id="bm-toggle" type="button" aria-pressed="false">Als Tabelle</button>
+        </div>
+      </div>
+      <div class="bm-legend" id="bm-legend" aria-hidden="true">
+        <span><i class="dot dot--fable"></i>Fable 5.2</span>
+        <span><i class="dot dot--opus"></i>Opus 5.5</span>
+        <span id="bm-legend-prev" hidden><i class="dot dot--prev"></i>Fable 5.1</span>
+        <span class="bm-legend-delta">rechts: Vorsprung in Prozentpunkten</span>
+      </div>
+      <div class="bm" id="bm" role="list" aria-label="Benchmarks: Fable 5.2 gegen Opus 5.5"></div>
+      <div class="table-scroll" id="bm-table-wrap" hidden></div>
+      <p class="note bm-foot">Quelle: <a href="https://www.anthropic.com/claude/fable" rel="noopener">anthropic.com/claude/fable</a>, abgerufen am 10.11.2026. Alle Werte mit aktiven Schutzmaßnahmen und auf der jeweils höchsten verfügbaren Denkstufe, sofern nicht anders vermerkt. RoboDojo Sim wurde von Anthropic intern gemessen.</p>
+    </div>
+
+    <div class="duo">
+      <div>
+        <h3>Wo Opus 5.5 vorne liegt oder völlig reicht</h3>
+        <ul class="list">
+          <li><strong>Preis.</strong> Die Hälfte pro Token, auch im Fast Mode.</li>
+          <li><strong>Elo-Wertung bei Wissensarbeit.</strong> In der Elo-Wertung von AA-Briefcase v1.1 liegt Opus mit 1800 zu 1785 Punkten knapp vorn. In der Rubrik-Wertung desselben Tests führe ich (66,1 % zu 61,2 %).</li>
+          <li><strong>Computerbedienung.</strong> 87,2 % zu 89,3 % bei OSWorld 2.1: fast gleichauf.</li>
+          <li><strong>Kürzere Züge.</strong> Opus startet auf Denkstufe <code>medium</code>, ich auf <code>high</code>. Solange du nichts umstellst, denkt Opus kürzer nach.</li>
+          <li><strong>Datenschutz-Vorgaben.</strong> Wer ohne Datenaufbewahrung arbeiten muss, hat es mit Opus einfacher.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Wo sich mein Aufpreis lohnt</h3>
+        <ul class="list">
+          <li><strong>Lange, eigenständige Arbeit.</strong> Remote Labor Index 41,3 % zu 21,3 %, Terminal-Bench-Science 74,6 % zu 58,7 %.</li>
+          <li><strong>Mehrstufige Abläufe.</strong> AutomationBench 51,4 % zu 42,5 %, agentische Suche (WANDR) 82,1 % zu 72,3 %.</li>
+          <li><strong>Schwere Programmieraufgaben.</strong> FrontierSWE v2 69,9 % zu 62,3 %.</li>
+          <li><strong>Wenn Opus nicht reicht.</strong> Anthropics Faustregel: wechseln, wenn Opus 5.5 auf höherer Denkstufe bei deinen eigenen Aufgaben hinter dem Ziel bleibt.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="calc" id="calc">
+      <div class="calc-head">
+        <h3>Was kostet dein Fall?</h3>
+        <p class="note">Listenpreise der Claude-API in US-Dollar, ohne Kosten für das Schreiben in den Cache. Denk-Tokens zählen als Ausgabe.</p>
+      </div>
+      <div class="calc-body">
+        <form class="calc-form" id="calc-form" onsubmit="return false">
+          <div class="seg calc-presets" id="calc-presets" role="group" aria-label="Beispielfälle"></div>
+          <div class="calc-fields">
+            <label class="field">Anfragen<input class="input" id="calc-n" type="number" min="1" step="1" inputmode="numeric"></label>
+            <label class="field">Eingabe-Tokens je Anfrage<input class="input" id="calc-in" type="number" min="0" step="100" inputmode="numeric"></label>
+            <label class="field">Ausgabe-Tokens je Anfrage<input class="input" id="calc-out" type="number" min="0" step="100" inputmode="numeric"></label>
+          </div>
+          <label class="field"><span class="field-row"><span>Anteil der Eingabe aus dem Cache</span><output id="calc-cache-val" for="calc-cache"></output></span><input id="calc-cache" type="range" min="0" max="95" step="5"></label>
+        </form>
+        <div class="calc-out" id="calc-out-list" aria-live="polite"></div>
+      </div>
+      <p class="note">Der Preis pro Token ist nicht der Preis pro gelöster Aufgabe. Ein stärkeres Modell braucht oft weniger Anläufe. Rechne bei wichtiger Arbeit mit den Kosten bis zum fertigen Ergebnis.</p>
+    </div>
+
+    <p class="moral"><span>Moral</span> Fang mit Opus 5.5 an. Hol mich, wenn die Aufgabe groß, offen oder teuer zu verpatzen ist.</p>
+  </div>
+</section>
+
+<!-- ============ Kompass ============ -->
+<section class="chapter" id="kompass" aria-labelledby="h-kompass">
+  <div class="wrap">
+    <p class="eyebrow">Kompass</p>
+    <h2 id="h-kompass">Wann du welches Modell nimmst</h2>
+    <p class="chapter-lead">Vier Fragen, eine Empfehlung. Darunter steht dieselbe Logik als Spickzettel.</p>
+
+    <div class="kompass">
+      <form class="kompass-q" id="kompass-q" onsubmit="return false"></form>
+      <div class="kompass-a" id="kompass-a" aria-live="polite"></div>
+    </div>
+
+    <h3 class="sub">Spickzettel</h3>
+    <div class="table-scroll">
+      <table class="cheat">
+        <thead><tr><th scope="col">Modell</th><th scope="col">Nimm es für</th><th scope="col">Lass es bei</th><th scope="col">Preis je Mio. Tokens</th></tr></thead>
+        <tbody>
+          <tr>
+            <th scope="row">Haiku 5.5<small><code>claude-haiku-5-5</code></small></th>
+            <td>Masse und Tempo: klassifizieren, extrahieren, weiterleiten, einfache Subagenten, die viel lesen.</td>
+            <td>Aufgaben, die Urteilsvermögen über viele Schritte brauchen.</td>
+            <td>ab $0,10 · $0,50</td>
+          </tr>
+          <tr>
+            <th scope="row">Sonnet 5.5<small><code>claude-sonnet-5-5</code></small></th>
+            <td>Schnelle, kluge Alltagsarbeit: Chat mit Live-Nutzern, alltägliches Programmieren, Agenten im Unternehmen.</td>
+            <td>Den härtesten Brocken, bei denen jeder Fehler teuer ist.</td>
+            <td>$2 · $10</td>
+          </tr>
+          <tr>
+            <th scope="row">Opus 5.5<small><code>claude-opus-5-5</code></small></th>
+            <td>Der Standard: ernsthafte Programmier- und Wissensarbeit, Code-Reviews, Analysen, lange Agentenläufe.</td>
+            <td>Reiner Massenverarbeitung, bei der der Preis entscheidet.</td>
+            <td>$4 · $20</td>
+          </tr>
+          <tr class="cheat-me">
+            <th scope="row">Fable 5.2<small><code>claude-fable-5-2</code></small></th>
+            <td>Das Schwerste: offene Probleme über mehrere Repos, Forschung, tagelange eigenständige Arbeit, Leitung vieler Subagenten.</td>
+            <td>Schnellem Hin und Her, einfachen Fragen, knappen Budgets.</td>
+            <td>$8 · $40</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="sub">Die Denkstufe ist der zweite Hebel</h3>
+    <p class="chapter-lead">Bei mir und bei Opus 5.5 ist das Denken immer an. Du stellst nur ein, wie gründlich. Bevor du mehrere Modelle kombinierst, miss erst die einfache Variante: das stärkere Modell auf einer niedrigeren Stufe.</p>
+    <ol class="effort" id="effort">
+      <li><code>low</code><span>Schnelles Hin und Her, klar umrissene Aufgaben, flinke Subagenten.</span></li>
+      <li><code>medium</code><span>Interaktives Programmieren, Chat, alltägliche Wissensarbeit. Standard bei Opus 5.5.</span></li>
+      <li class="effort-me"><code>high</code><span>Schweres Programmieren, Recherche, lange unbeaufsichtigte Läufe. Mein Standard. Hier kommt der größte Teil meines Vorsprungs an.</span></li>
+      <li><code>xhigh</code><span>Nur für die härtesten Langläufer, wenn du den Gewinn gemessen hast. Kostet deutlich mehr Tokens.</span></li>
+      <li><code>max</code><span>Um die Obergrenze auszuloten, oder für offene Probleme in Mathematik und Forschung, bei denen Zeit keine Rolle spielt.</span></li>
+    </ol>
+
+    <p class="moral"><span>Moral</span> Im Zweifel Opus 5.5. Kleiner, wenn Masse und Tempo zählen. Größer, wenn Opus auf hoher Denkstufe nicht reicht.</p>
+  </div>
+</section>
+
+<!-- ============ Selbsttest ============ -->
+<section class="chapter" id="selbsttest" aria-labelledby="h-selbsttest">
+  <div class="wrap">
+    <p class="eyebrow">Selbsttest</p>
+    <h2 id="h-selbsttest">Glaub mir nichts. Lass uns gegeneinander antreten.</h2>
+    <p class="chapter-lead">Dieselbe Aufgabe für Fable 5.2 und für Opus 5.5, Antwort neben Antwort. Zu jeder Aufgabe steht dabei, worauf du achten solltest und was richtig wäre.</p>
+
+    <div class="duell" id="duell">
+      <div class="duell-top">
+        <div class="seg duell-tasks" id="duell-tasks" role="group" aria-label="Aufgabe wählen"></div>
+        <label class="field duell-prompt-field">Aufgabe
+          <textarea class="input" id="duell-prompt" rows="7" spellcheck="false"></textarea>
+        </label>
+        <div class="duell-watch" id="duell-watch"></div>
+        <div class="demo-bar duell-actions">
+          <div class="seg" id="duell-effort" role="group" aria-label="Denkstufe">
+            <button type="button" data-effort="low" aria-pressed="false">low</button>
+            <button type="button" data-effort="medium" aria-pressed="true">medium</button>
+            <button type="button" data-effort="high" aria-pressed="false">high</button>
+          </div>
+          <button class="btn btn--primary" id="duell-go" type="button" hidden>Beide fragen</button>
+          <button class="btn" id="duell-stop" type="button" hidden>Stopp</button>
+          <button class="btn" id="duell-copy" type="button">Aufgabe kopieren</button>
+          <span class="note" id="duell-status" role="status"></span>
+        </div>
+        <p class="note" id="duell-hint"></p>
+      </div>
+      <div class="duell-cols" id="duell-cols" hidden>
+        <article class="duell-col" data-side="fable">
+          <header><h3><span class="dot dot--fable"></span>Fable 5.2</h3><span class="chip" data-role="badge">bereit</span></header>
+          <div class="duell-meta"><span data-role="time">–</span><span data-role="len">–</span></div>
+          <div class="duell-text" data-role="text" tabindex="0"></div>
+        </article>
+        <article class="duell-col" data-side="opus">
+          <header><h3><span class="dot dot--opus"></span>Opus 5.5</h3><span class="chip" data-role="badge">bereit</span></header>
+          <div class="duell-meta"><span data-role="time">–</span><span data-role="len">–</span></div>
+          <div class="duell-text" data-role="text" tabindex="0"></div>
+        </article>
+      </div>
+    </div>
+
+    <p class="moral"><span>Moral</span> Ein Test mit deinen eigenen Aufgaben schlägt jede Tabelle, auch meine.</p>
+  </div>
+</section>
+
+<!-- ============ Werkstatt ============ -->
+<section class="chapter" id="werkstatt" aria-labelledby="h-werkstatt">
+  <div class="wrap">
+    <p class="eyebrow">Werkstatt</p>
+    <h2 id="h-werkstatt">Wie diese Seite entstanden ist</h2>
+    <p class="chapter-lead">Kein Baukasten, keine Vorlage. Der Weg vom leeren Repository bis zu dem, was du gerade liest, mit den Uhrzeiten dieser Session (MEZ).</p>
+
+    <div class="werk">
+      <ol class="log" id="log"></ol>
+      <div class="werk-side">
+        <dl class="tally" id="tally"></dl>
+        <p class="note">Der Quelltext liegt lesbar im Repository unter <code>src/</code>, die Tests unter <code>tests/</code>. <code>node build.mjs</code> baut daraus die eine Datei, die du hier siehst.</p>
+      </div>
+    </div>
+
+    <h3 class="sub">Quellen</h3>
+    <ul class="list sources">
+      <li><a href="https://www.anthropic.com/claude/fable" rel="noopener">anthropic.com/claude/fable</a>: Positionierung, Benchmarks, Schutzmaßnahmen, Verfügbarkeit.</li>
+      <li><a href="https://platform.claude.com/docs/en/about-claude/models/overview" rel="noopener">Modellübersicht der Claude-Dokumentation</a>: Preise, Kontext, Denkstufen, Wissensstand aller vier Modelle.</li>
+      <li>Migrationshinweise der Claude-API zu Fable 5.2 und Opus 5.5: Denkstufen, Fast Mode, Datenaufbewahrung.</li>
+    </ul>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <p>Das ist keine offizielle Seite von Anthropic. Gebaut hat sie Claude am 10. November 2026 in einer Claude-Code-Session, die für das Modell Fable 5.2 eingerichtet war.</p>
+    <p>Preise und Messwerte stammen aus den verlinkten Quellen und können sich ändern.</p>
+  </div>
+</footer>
+
+<div class="tip" id="tip" role="tooltip" hidden></div>
+</div>
+<!--JS-->

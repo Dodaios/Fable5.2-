@@ -1,0 +1,41 @@
+/* Wegfinder: two maps side by side, stacking when the stage gets narrow. */
+.d-pfad { display: grid; gap: 1rem; }
+.d-pfad-tools { row-gap: 0.6rem; }
+.d-pfad-group { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.d-pfad-group--run { flex: 0 1 auto; flex-wrap: nowrap; }
+.d-pfad-tempo { flex: 1 1 9.5rem; min-width: 6.5rem; max-width: 11rem; }
+.d-pfad-duo {
+  display: grid; gap: 1.1rem; align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+}
+.d-pfad-col { min-width: 0; }
+.d-pfad-side { display: grid; gap: 0.6rem; width: fit-content; max-width: 100%; }
+.d-pfad-head { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }
+.d-pfad-head .select { flex: 1 1 auto; min-width: 0; max-width: 15rem; }
+.d-pfad-swatch { flex: none; width: 0.8rem; height: 0.8rem; border-radius: 3px; }
+.d-pfad-swatch--a { background: var(--series-fable); }
+.d-pfad-swatch--b { background: var(--series-opus); }
+.d-pfad-map { width: fit-content; max-width: 100%; border-radius: var(--radius); background: var(--surface); }
+.d-pfad-map canvas { width: auto; height: auto; touch-action: none; cursor: crosshair; user-select: none; -webkit-user-select: none; }
+.d-pfad-map canvas:focus-visible { outline-offset: -3px; }
+.d-pfad-side .kv { min-width: 0; }
+.d-pfad-verdict {
+  max-width: 72ch; min-height: 4.2em;
+  padding: 0.75rem 0.95rem; border-radius: var(--radius);
+  background: var(--surface-2); color: var(--ink);
+  font-size: 0.98rem; line-height: 1.5;
+}
+.d-pfad-legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1.1rem; margin: 0; padding: 0; list-style: none; font-size: 0.8rem; color: var(--ink-2); }
+.d-pfad-key { display: inline-flex; align-items: center; gap: 0.45rem; }
+.d-pfad-key i { flex: none; display: inline-block; width: 14px; height: 14px; border-radius: 2px; }
+.d-pfad-key--start i { border-radius: 50%; background: var(--ink); }
+.d-pfad-key--goal i { border-radius: 50%; border: 2px solid var(--ink); background: radial-gradient(circle, var(--ink) 0 2px, var(--surface) 2.5px); }
+.d-pfad-key--wall i { background: var(--ink-2); }
+.d-pfad-key--swamp i {
+  border: 1px solid var(--line-strong);
+  background: linear-gradient(to bottom right, transparent calc(50% - 1px), var(--ink-3) calc(50% - 1px), var(--ink-3) calc(50% + 1px), transparent calc(50% + 1px)), var(--surface-2);
+}
+.d-pfad-key--va i { background: var(--series-fable); opacity: 0.4; }
+.d-pfad-key--vb i { background: var(--series-opus); opacity: 0.4; }
+.d-pfad-key--front i { width: 10px; height: 10px; margin: 2px; background: var(--series-fable); opacity: 0.9; }
+.d-pfad-key--path i { width: 24px; height: 6px; border-radius: 3px; background: var(--sun); border: 1.5px solid var(--sun-ink); }

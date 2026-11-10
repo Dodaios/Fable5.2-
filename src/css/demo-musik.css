@@ -1,0 +1,77 @@
+/* Taktwerk (demo "musik"). Every rule is scoped with .d-musik-. Colors come from tokens only. */
+.d-musik {
+  --d-musik-label: 3.6rem;
+  --d-musik-gap: 3px;
+  --d-musik-beat: 3px;
+  --d-musik-cell-h: 24px;
+}
+.d-musik-main { display: grid; gap: 0.8rem; align-content: start; }
+.d-musik-start { min-width: 6.4rem; }
+.d-musik-chip { font-variant-numeric: tabular-nums; }
+.d-musik-status { margin: 0; color: var(--ink-2); }
+
+.d-musik-grid { display: grid; gap: var(--d-musik-gap); }
+.d-musik-row {
+  display: grid;
+  grid-template-columns:
+    var(--d-musik-label)
+    repeat(4, minmax(0, 1fr)) var(--d-musik-beat)
+    repeat(4, minmax(0, 1fr)) var(--d-musik-beat)
+    repeat(4, minmax(0, 1fr)) var(--d-musik-beat)
+    repeat(4, minmax(0, 1fr));
+  gap: var(--d-musik-gap);
+  align-items: stretch;
+}
+.d-musik-group { margin: 0.5rem 0 0.1rem; }
+.d-musik-label {
+  grid-column: 1;
+  display: flex; align-items: center;
+  font: 600 0.74rem/1 var(--font-body);
+  color: var(--ink-2);
+  white-space: nowrap; overflow: hidden;
+  font-variant-numeric: tabular-nums;
+}
+
+.d-musik-lamp {
+  display: flex; align-items: flex-end; justify-content: flex-start;
+  height: 20px; padding-bottom: 5px;
+  font: 600 0.66rem/1 var(--font-body); color: var(--ink-3);
+  border-bottom: 3px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+.d-musik-lamp.is-now { border-bottom-color: var(--ink); color: var(--ink); }
+
+.d-musik-cell {
+  appearance: none; -webkit-appearance: none;
+  min-width: 0; height: var(--d-musik-cell-h);
+  margin: 0; padding: 0; border: 0; border-radius: 3px;
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: transform 0.08s, background-color 0.08s;
+  touch-action: manipulation;
+}
+.d-musik-cell:hover { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.d-musik-cell[aria-pressed="true"] { background: var(--accent); }
+.d-musik-cell--bass[aria-pressed="true"] { background: var(--ink); }
+.d-musik-cell--lead[aria-pressed="true"] { background: var(--sun); }
+.d-musik-cell[aria-pressed="true"]:hover { box-shadow: inset 0 0 0 1px var(--ink); }
+.d-musik-cell.is-now { box-shadow: inset 0 0 0 2px var(--ink-3); }
+.d-musik-cell.is-now[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--ink); transform: scale(1.14); }
+.d-musik-cell--bass.is-now[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--sun); }
+.d-musik-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; position: relative; z-index: 1; }
+
+.d-musik-block { display: grid; gap: 0.45rem; }
+.d-musik-scope canvas { height: 64px; }
+.d-musik-pair { display: grid; grid-template-columns: minmax(4.4rem, 0.5fr) minmax(0, 1.5fr); gap: 0.7rem; }
+.d-musik-recipe dd { font-weight: 600; }
+
+@media (max-width: 560px) {
+  .d-musik {
+    --d-musik-label: 2.3rem;
+    --d-musik-gap: 2px;
+    --d-musik-beat: 1px;
+    --d-musik-cell-h: 28px;
+  }
+  .d-musik-label { font-size: 0.62rem; }
+  .d-musik-lamp { font-size: 0.6rem; }
+}

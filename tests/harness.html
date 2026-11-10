@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Demo-Harness</title>
+<link rel="stylesheet" href="../src/styles.css">
+<style>
+  .harness { max-width: 1120px; margin: 0 auto; padding-block: 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .stage { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: clamp(12px, 2.5vw, 22px); }
+  .harness h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  .harness .lead { color: var(--ink-2); max-width: 62ch; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<!-- Mounts one demo in isolation: tests/harness.html?demo=<id>[&theme=dark] -->
+<div class="harness">
+  <h1 id="h-title"></h1>
+  <p class="lead" id="h-lead"></p>
+  <div class="stage" id="stage"></div>
+</div>
+<script src="../src/js/core.js"></script>
+<script>
+  (function () {
+    var q = new URLSearchParams(location.search);
+    var id = q.get("demo");
+    if (q.get("theme")) document.documentElement.setAttribute("data-theme", q.get("theme"));
+    var css = document.createElement("link");
+    css.rel = "stylesheet"; css.href = "../src/css/demo-" + id + ".css";
+    document.head.appendChild(css);
+    var s = document.createElement("script");
+    s.src = "../src/js/demos/" + id + ".js";
+    s.onload = function () {
+      var def = Werkschau.demos[id];
+      document.getElementById("h-title").textContent = def.title + " · " + def.kind;
+      document.getElementById("h-lead").textContent = def.lead;
+      window.__demo = def.mount(document.getElementById("stage"));
+      window.__ready = true;
+    };
+    document.body.appendChild(s);
+  })();
+</script>
+</body>
+</html>
