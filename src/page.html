@@ -315,10 +315,13 @@
         </label>
         <div class="duell-watch" id="duell-watch"></div>
         <div class="demo-bar duell-actions">
-          <div class="seg" id="duell-effort" role="group" aria-label="Denkstufe">
-            <button type="button" data-effort="low" aria-pressed="false">low</button>
-            <button type="button" data-effort="medium" aria-pressed="true">medium</button>
-            <button type="button" data-effort="high" aria-pressed="false">high</button>
+          <div class="duell-effort" id="duell-effort-wrap" hidden>
+            <span class="demo-h" id="duell-effort-label">Denkstufe</span>
+            <div class="seg" id="duell-effort" role="group" aria-labelledby="duell-effort-label">
+              <button type="button" data-effort="low" aria-pressed="false">low</button>
+              <button type="button" data-effort="medium" aria-pressed="true">medium</button>
+              <button type="button" data-effort="high" aria-pressed="false">high</button>
+            </div>
           </div>
           <button class="btn btn--primary" id="duell-go" type="button" hidden>Beide fragen</button>
           <button class="btn" id="duell-stop" type="button" hidden>Stopp</button>

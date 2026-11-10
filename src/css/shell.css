@@ -44,7 +44,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .hero-orb.is-fallback canvas { display: none; }
 .hero-orb.is-fallback::after {
   content: ""; position: absolute; inset: 18%; border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, var(--band-ink) 0%, var(--sun) 28%, color-mix(in srgb, var(--sun) 55%, var(--band-2)) 78%);
+  background: radial-gradient(circle at 35% 30%, var(--band-ink) 0%, var(--sun) 30%, color-mix(in srgb, var(--sun) 62%, var(--crit)) 100%);
   box-shadow: 0 0 0 14px color-mix(in srgb, var(--sun) 18%, transparent), 0 0 0 34px color-mix(in srgb, var(--sun) 8%, transparent);
 }
 .hero-fig figcaption { font-size: 0.82rem; color: var(--band-ink-2); text-align: center; margin-top: 0.4rem; }
@@ -246,6 +246,7 @@ td { color: var(--ink-2); }
 .duell { margin-top: 2.2rem; display: grid; gap: 1.2rem; }
 .duell-top { display: grid; gap: 0.9rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: clamp(1rem, 2.5vw, 1.5rem); }
 .duell-tasks { width: fit-content; max-width: 100%; }
+.duell-effort { display: inline-flex; align-items: center; gap: 0.6rem; }
 .duell-watch { font-size: 0.92rem; line-height: 1.5; color: var(--ink-2); max-width: var(--measure); }
 .duell-watch b { color: var(--ink); }
 .duell-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }

@@ -50,7 +50,7 @@
   }
 
   function toNumber(s, decComma) {
-    s = s.replace(/[\s  ]/g, "").replace(/^[€$£]|(?:€|%|EUR)$/gi, "").replace("−", "-");
+    s = s.replace(/[\s\u00a0\u202f]/g, "").replace(/^[€$£]|(?:€|%|EUR)$/gi, "").replace("−", "-");
     if (!s) return NaN;
     if (decComma) {
       if (/^[+-]?(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?$/.test(s)) return parseFloat(s.replace(/\./g, "").replace(",", "."));
@@ -437,6 +437,22 @@
     if (Math.max(Math.abs(scale.lo), Math.abs(scale.hi)) >= 10000) return (Math.round(v) === 0 ? 0 : v).toLocaleString("de-DE", { notation: "compact", maximumFractionDigits: 1 }).replace(/^-/, "−");
     return nf(v, scale.digits);
   }
+  /* Resolve any CSS color (hex, color-mix result, oklab ...) to sRGB through a 1 px canvas. */
+  var probe = null;
+  function rgbOf(color) {
+    if (!probe) { var cv = document.createElement("canvas"); cv.width = cv.height = 1; probe = cv.getContext("2d", { willReadFrequently: true }); }
+    if (!probe) return null;
+    probe.fillStyle = "#010203"; probe.fillStyle = color;
+    if (probe.fillStyle === "#010203" && !/^#010203$/i.test(color)) return null; /* this browser cannot parse the color */
+    probe.clearRect(0, 0, 1, 1); probe.fillRect(0, 0, 1, 1);
+    var d = probe.getImageData(0, 0, 1, 1).data;
+    return [d[0], d[1], d[2]];
+  }
+  function relLum(c) {
+    function f(v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+  }
+  function contrast(a, b) { var x = relLum(a), y = relLum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
   var SVG_NS = "http://www.w3.org/2000/svg";
   function sv(tag, attrs) {
     var node = document.createElementNS(SVG_NS, tag), k, i;
@@ -475,9 +491,10 @@
     var seg = el("div", { class: "seg", role: "group", "aria-label": "Ausreißer-Zeilen in Diagramm und Korrelationen" }, bWith, bWithout);
     var plot = el("div", { class: "d-daten-plot" });
     var cap = el("p", { class: "d-daten-cap" });
+    var keyRing = el("span", {}, el("i", { class: "d-daten-key d-daten-key--ring" }), "Ausreißer-Zeile");
     var legend = el("div", { class: "d-daten-legend" },
-      el("span", {}, el("i", { class: "d-daten-key d-daten-key--dot" }), "Zeile"),
-      el("span", {}, el("i", { class: "d-daten-key d-daten-key--ring" }), "Ausreißer-Zeile"),
+      el("span", {}, el("i", { class: "d-daten-key d-daten-key--dot" }), "Datenzeile"),
+      keyRing,
       el("span", {}, el("i", { class: "d-daten-key d-daten-key--line" }), "Ausgleichsgerade"));
     var heat = el("div", { class: "d-daten-heatwrap" });
     var heatCap = el("p", { class: "note" });
@@ -499,13 +516,13 @@
       el("section", { class: "d-daten-block" }, el("h4", { class: "demo-h" }, "Spalten"), cards),
       el("div", { class: "d-daten-two" },
         el("section", { class: "d-daten-panel" },
-          el("h4", { class: "demo-h" }, "Zusammenhang zweier Spalten"),
+          el("div", { class: "demo-bar d-daten-head" }, el("h4", { class: "demo-h" }, "Zusammenhang zweier Spalten")),
           el("div", { class: "d-daten-controls" },
             el("label", { class: "field", for: "d-daten-x" }, "Waagerecht (X)", selX),
             el("label", { class: "field", for: "d-daten-y" }, "Senkrecht (Y)", selY), seg),
           plot, cap, legend),
         el("section", { class: "d-daten-panel" },
-          el("div", { class: "demo-bar" }, el("h4", { class: "demo-h" }, "Korrelationen"), el("span", { class: "spacer" }), btnTable),
+          el("div", { class: "demo-bar d-daten-head" }, el("h4", { class: "demo-h" }, "Korrelationen"), el("span", { class: "spacer" }), btnTable),
           heat, scaleKey, heatCap)),
       el("p", { class: "note" }, "Alles hier rechnet Code, den ich geschrieben habe, direkt in deinem Browser: Parser, Statistik, Diagramme und die Befunde als feste Regeln. Zur Laufzeit läuft kein Sprachmodell, und deine Daten verlassen den Browser nicht. Ein Zusammenhang ist kein Beleg für eine Ursache. Zeilennummern zählen ab der ersten Datenzeile."),
       tip);
@@ -556,7 +573,7 @@
       var retried = false, rd = reader = new FileReader();
       rd.onload = function () {
         var txt = String(rd.result);
-        if (!retried && txt.indexOf("�") !== -1) { retried = true; rd.readAsText(file, "windows-1252"); return; } /* typical Excel export */
+        if (!retried && txt.indexOf("\ufffd") !== -1) { retried = true; rd.readAsText(file, "windows-1252"); return; } /* typical Excel export */
         reader = null; load(txt, "Datei: " + file.name);
       };
       rd.onerror = function () { reader = null; showError("Die Datei ließ sich nicht lesen. Versuche es mit Einfügen als Text."); };
@@ -611,13 +628,13 @@
         if (col.outliers.length) notes.push(col.outliers.length === 1 ? "1 Ausreißer" : col.outliers.length + " Ausreißer");
         if (col.invalid) notes.push(col.invalid + " nicht lesbar");
       } else if (col.type === "kategorie") {
-        var top = col.counts.slice(0, 6), most = top[0].count;
+        var top = col.counts.slice(0, 8), most = top[0].count, rest = col.counts.length - top.length;
         body.push(el("ul", { class: "d-daten-meters" }, top.map(function (c) {
           return el("li", {}, el("span", { class: "d-daten-mname", text: c.value }),
             el("span", { class: "d-daten-meter" }, el("span", { style: { width: c.count / most * 100 + "%" } })),
             el("span", { class: "d-daten-count", text: nf(c.count) }));
         })));
-        if (col.counts.length > 6) notes.push((col.counts.length - 6) + " weitere Werte");
+        if (rest > 0) notes.push(rest === 1 ? "1 weiterer Wert" : rest + " weitere Werte");
       } else if (col.type === "datum") {
         body.push(el("dl", { class: "d-daten-stats" }, stat("Von", fmtDay(col.min)), stat("Bis", fmtDay(col.max)), stat("Tage", nf(col.distinct)), stat("Spanne", nf(col.max - col.min + 1) + " Tage")));
       } else {
@@ -676,10 +693,13 @@
         svg.appendChild(sv("clipPath", { id: clipId }, sv("rect", { x: ml, y: mt, width: w - ml - mr, height: h - mt - mb })));
         svg.appendChild(sv("line", { class: "d-daten-fit", "clip-path": "url(#" + clipId + ")", x1: X(sx.lo), y1: Y(fit.intercept + fit.slope * sx.lo), x2: X(sx.hi), y2: Y(fit.intercept + fit.slope * sx.hi) }));
       }
-      pts.forEach(function (q) {
-        if (q.o) svg.appendChild(sv("circle", { class: "d-daten-ring", cx: X(q.x), cy: Y(q.y), r: 9.5 }));
+      pts.forEach(function (q) { if (!q.o) svg.appendChild(sv("circle", { class: "d-daten-pt", cx: X(q.x), cy: Y(q.y), r: 5 })); });
+      pts.forEach(function (q) { /* outlier rows last, so their ring is never buried under other points */
+        if (!q.o) return;
+        svg.appendChild(sv("circle", { class: "d-daten-ring", cx: X(q.x), cy: Y(q.y), r: 9.5 }));
         svg.appendChild(sv("circle", { class: "d-daten-pt", cx: X(q.x), cy: Y(q.y), r: 5 }));
       });
+      keyRing.hidden = !pts.some(function (q) { return q.o; });
       var hov = sv("circle", { class: "d-daten-hover", r: 7.5, visibility: "hidden" });
       svg.appendChild(hov);
 
@@ -747,16 +767,23 @@
             var v = val(a, b), abs = Math.abs(v.r), cell;
             if (a === b) cell = el("span", { class: "d-daten-cell is-diag", "data-tip": r.name + "\nmit sich selbst: r = 1" }, "1");
             else if (!Number.isFinite(v.r)) cell = el("span", { class: "d-daten-cell is-diag", "data-tip": r.name + " × " + c.name + "\nnicht berechenbar (Spalte konstant oder zu wenige Werte)" }, "–");
-            else cell = el("span", { class: "d-daten-cell " + (v.r >= 0 ? "is-pos" : "is-neg") + (abs >= 0.62 ? " is-strong" : ""), style: "--t:" + Math.round(abs * 100) + "%", "data-tip": r.name + " × " + c.name + "\nr = " + nf(v.r, 2) + ", n = " + nf(v.n) }, nf(v.r, 2));
+            else cell = el("span", { class: "d-daten-cell is-val " + (v.r >= 0 ? "is-pos" : "is-neg") + (abs >= 0.75 ? " is-strong" : ""), style: "--t:" + Math.round(abs * 100) + "%", "data-tip": r.name + " × " + c.name + "\nr = " + nf(v.r, 2) + ", n = " + nf(v.n) }, nf(v.r, 2));
             grid.appendChild(cell);
           });
         });
         heat.replaceChildren(grid);
+        /* text on each cell: whichever of the two ink tokens contrasts more with the measured fill */
+        var ink = rgbOf(W.token("--ink")), on = rgbOf(W.token("--accent-ink"));
+        if (ink && on) Array.prototype.forEach.call(grid.querySelectorAll(".is-val"), function (cell) {
+          var bg = rgbOf(getComputedStyle(cell).backgroundColor);
+          if (bg) cell.classList.toggle("is-strong", contrast(bg, on) > contrast(bg, ink));
+        });
       }
       heatCap.textContent = (S.hideOut && p.outlierRows.length ? "Gerechnet ohne die " + (p.outlierRows.length === 1 ? "Ausreißer-Zeile" : p.outlierRows.length + " Ausreißer-Zeilen") + ". " : "") +
         "Pearson-Korrelation r je Spaltenpaar" + (p.numeric.length > MAX_HEAT ? ", die ersten " + MAX_HEAT + " von " + p.numeric.length + " Zahlenspalten" : "") + ".";
     }
 
+    var offTheme = W.onTheme(function () { if (S.prof) drawHeat(); });
     if (root.ResizeObserver) {
       ro = new ResizeObserver(function () {
         var w = Math.floor(plot.clientWidth);
@@ -770,6 +797,7 @@
     return {
       destroy: function () {
         if (ro) ro.disconnect();
+        offTheme();
         root.cancelAnimationFrame(raf);
         if (reader) { try { reader.abort(); } catch (e) { /* already done */ } reader = null; }
         wrap.remove();

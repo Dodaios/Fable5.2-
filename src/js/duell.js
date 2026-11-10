@@ -53,12 +53,11 @@
     });
 
     hint.textContent = "Das Live-Duell läuft, wenn du diese Seite als Artifact in Claude öffnest. Hier kopierst du die Aufgabe und stellst sie in zwei Chats: einmal mit Fable 5.2, einmal mit Opus 5.5.";
-    effortHost.hidden = true;
 
     W.capability("sample").then(function (fn) {
       if (!fn) return;
       sample = fn;
-      go.hidden = false; cols.hidden = false; effortHost.hidden = false;
+      go.hidden = false; cols.hidden = false; document.getElementById("duell-effort-wrap").hidden = false;
       hint.textContent = "Beide Anfragen laufen über dein eigenes Claude-Konto und verbrauchen dein Kontingent. Beim ersten Mal fragt Claude nach deiner Erlaubnis. Antworten auf hoher Denkstufe können eine Minute und länger dauern.";
     });
 

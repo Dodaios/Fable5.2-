@@ -24,7 +24,7 @@
 .d-daten-findings li::marker { font-weight: 700; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 
 /* column profile cards */
-.d-daten-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 0.75rem; }
+.d-daten-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 0.75rem; }
 .d-daten-card { border: 1px solid var(--line); border-radius: var(--radius); padding: 0.75rem 0.8rem; display: grid; gap: 0.6rem; align-content: start; min-width: 0; }
 .d-daten-card > * { min-width: 0; }
 .d-daten-card-h { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
@@ -50,6 +50,7 @@
 @media (min-width: 920px) { .d-daten-two { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
 .d-daten-panel { display: grid; gap: 0.7rem; align-content: start; min-width: 0; }
 .d-daten-panel > * { min-width: 0; }
+.d-daten-head { min-height: 2rem; }
 .d-daten-controls { display: flex; flex-wrap: wrap; gap: 0.6rem 0.8rem; align-items: flex-end; }
 .d-daten-controls .field { flex: 1 1 8.5rem; max-width: 15rem; min-width: 0; }
 .d-daten-plot svg { display: block; width: 100%; height: auto; overflow: visible; border-radius: 4px; }
@@ -81,7 +82,7 @@
 .d-daten-cell.is-pos { --d-daten-pole: var(--d-daten-pos); }
 .d-daten-cell.is-neg { --d-daten-pole: var(--d-daten-neg); }
 .d-daten-cell.is-strong { color: var(--accent-ink); }
-.d-daten-cell.is-diag { color: var(--ink-3); font-weight: 500; }
+.d-daten-cell.is-diag { color: var(--ink-2); font-weight: 500; }
 .d-daten-scale { display: grid; gap: 0.25rem; max-width: 21rem; }
 .d-daten-scale-bar { height: 8px; border-radius: 4px; background: linear-gradient(to right, var(--d-daten-neg), var(--d-daten-mid), var(--d-daten-pos)); background: linear-gradient(to right in oklab, var(--d-daten-neg), var(--d-daten-mid), var(--d-daten-pos)); }
 .d-daten-scale-x { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.72rem; color: var(--ink-3); }

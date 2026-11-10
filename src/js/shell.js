@@ -28,7 +28,7 @@
     } catch (e) { console.error(e); view = null; }
     if (!view || !view.ok) {
       orb.classList.add("is-fallback");
-      cap.textContent = "Dein Browser stellt hier kein WebGL bereit. Die bewegte Fassung findest du unter den Demos.";
+      cap.textContent = "Dein Browser stellt hier kein WebGL bereit, deshalb siehst du ein Standbild statt der bewegten Gestalt.";
     }
   }
 
