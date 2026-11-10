@@ -8,8 +8,9 @@
   display: grid;
   gap: 1.15rem;
   min-width: 0;
+  overflow-wrap: anywhere; /* column names and cell values come from the viewer's data */
 }
-.d-daten > * { min-width: 0; }
+.d-daten > *, .d-daten-block > * { min-width: 0; }
 .d-daten.is-drop { outline: 2px dashed var(--accent); outline-offset: 6px; border-radius: var(--radius); }
 .d-daten-block { display: grid; gap: 0.55rem; }
 .d-daten-paste { display: grid; gap: 0.6rem; }
@@ -101,6 +102,6 @@
 }
 .d-daten-tip b, .d-daten-tip span { display: block; }
 .d-daten-tip b { margin-bottom: 0.1rem; }
-.d-daten-tip dl { margin: 0.2rem 0 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 0.8rem; }
+.d-daten-tip dl { margin: 0.2rem 0 0; display: grid; grid-template-columns: minmax(0, auto) minmax(0, auto); justify-content: space-between; gap: 0 0.8rem; }
 .d-daten-tip dt { font-family: var(--font-mono); font-size: 0.72rem; opacity: 0.78; overflow-wrap: anywhere; }
 .d-daten-tip dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }

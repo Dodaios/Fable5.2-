@@ -181,6 +181,7 @@ test("findings: 3 to 6 sentences for the example, each one checkable", () => {
   assert.match(out, /Zeile 64: besucher = 298/);
   assert.match(out, /Zeile 91: umsatz_eur = /);
   assert.match(f[0].text, /besucher .* umsatz_eur/);
+  assert.match(f[0].text, /r = 0,94, n = 115, ohne die 3 Ausreißer-Zeilen\)\. Mit ihnen wäre r = 0,58\.$/); // the demo's "Moral" quotes these numbers
 });
 test("findings stay quiet on noise and on tiny tables", () => {
   let s = 7, rnd = () => (s = (s * 16807) % 2147483647) / 2147483647, csv = "a,b,c,g\n";

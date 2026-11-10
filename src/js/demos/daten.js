@@ -453,6 +453,7 @@
     return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
   }
   function contrast(a, b) { var x = relLum(a), y = relLum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+  function clip(name, max) { return name.length > max ? name.slice(0, Math.max(1, max - 1)) + "\u2026" : name; }
   var SVG_NS = "http://www.w3.org/2000/svg";
   function sv(tag, attrs) {
     var node = document.createElementNS(SVG_NS, tag), k, i;
@@ -687,8 +688,9 @@
       });
       svg.appendChild(sv("line", { class: "d-daten-axis", x1: ml, x2: w - mr, y1: h - mb, y2: h - mb }));
       svg.appendChild(sv("line", { class: "d-daten-axis", x1: ml, x2: ml, y1: mt, y2: h - mb }));
-      svg.appendChild(sv("text", { class: "d-daten-axt", x: 0, y: 13 }, cy.name));
-      svg.appendChild(sv("text", { class: "d-daten-axt", x: w - mr, y: h - 6, "text-anchor": "end" }, cx.name));
+      var room = Math.floor((w - mr) / 7.2); /* axis titles are cut to the plot width; the selects show the full names */
+      svg.appendChild(sv("text", { class: "d-daten-axt", x: 0, y: 13 }, clip(cy.name, room)));
+      svg.appendChild(sv("text", { class: "d-daten-axt", x: w - mr, y: h - 6, "text-anchor": "end" }, clip(cx.name, room)));
       if (Number.isFinite(fit.slope)) {
         svg.appendChild(sv("clipPath", { id: clipId }, sv("rect", { x: ml, y: mt, width: w - ml - mr, height: h - mt - mb })));
         svg.appendChild(sv("line", { class: "d-daten-fit", "clip-path": "url(#" + clipId + ")", x1: X(sx.lo), y1: Y(fit.intercept + fit.slope * sx.lo), x2: X(sx.hi), y2: Y(fit.intercept + fit.slope * sx.hi) }));
@@ -760,9 +762,10 @@
       } else {
         var grid = el("div", { class: "d-daten-heat", role: "img", "aria-label": "Korrelationen zwischen " + k + " Zahlenspalten als Farbfeld. Die Werte stehen auch in der Tabellenansicht.", style: { gridTemplateColumns: "minmax(4.5rem, max-content) repeat(" + k + ", minmax(52px, 1fr))" } });
         grid.appendChild(el("span", {}));
-        cols.forEach(function (c) { grid.appendChild(el("span", { class: "d-daten-hl d-daten-hl--col", text: c.name })); });
+        var label = function (c, cls) { var max = cls ? 14 : 16; return el("span", { class: "d-daten-hl" + cls, text: clip(c.name, max), "data-tip": c.name.length > max ? c.name : null }); };
+        cols.forEach(function (c) { grid.appendChild(label(c, " d-daten-hl--col")); });
         cols.forEach(function (r, a) {
-          grid.appendChild(el("span", { class: "d-daten-hl", text: r.name }));
+          grid.appendChild(label(r, ""));
           cols.forEach(function (c, b) {
             var v = val(a, b), abs = Math.abs(v.r), cell;
             if (a === b) cell = el("span", { class: "d-daten-cell is-diag", "data-tip": r.name + "\nmit sich selbst: r = 1" }, "1");
@@ -816,7 +819,7 @@
       "Ausreißer per modifiziertem z-Wert, p-Werte über die unvollständige Betafunktion",
       "Kein Sprachmodell zur Laufzeit, die Befunde sind feste Regeln"
     ],
-    moral: "Erst die Daten prüfen, dann den Zahlen glauben: Wenige falsche Werte reichen, um einen Zusammenhang zu verzerren.",
+    moral: "Erst die Daten prüfen, dann den Zahlen glauben: Im Beispiel drücken drei falsche Werte unter 120 Zeilen r von 0,94 auf 0,58.",
     mount: mount
   });
 })();

@@ -20,13 +20,13 @@
       name: "Erste Zustellung", par: 2, maxSteps: 1440,
       pad: { x: 110, y: 430 }, target: { x: 800, y: 215, r: 48 },
       bodies: [{ name: "Kiesel", x: 480, y: 560, r: 30, mu: 0.9e6, tone: "hell" }],
-      aim: { angle: 0, power: 60 }, solution: { angle: 0, power: 0 }
+      aim: { angle: 0, power: 60 }, solution: { angle: 22, power: 61 }
     },
     {
       name: "Der Umweg", par: 3, maxSteps: 1680,
       pad: { x: 100, y: 312 }, target: { x: 900, y: 312, r: 21 },
       bodies: [{ name: "Brocken", x: 500, y: 312, r: 62, mu: 3.2e6, tone: "glut" }],
-      aim: { angle: 0, power: 60 }, solution: { angle: 0, power: 0 }
+      aim: { angle: 0, power: 60 }, solution: { angle: 19, power: 68.5 }
     },
     {
       name: "Zwischen zwei Welten", par: 3, maxSteps: 1680,
@@ -35,7 +35,7 @@
         { name: "Zwilling West", x: 370, y: 410, r: 54, mu: 1.7e6, tone: "blau" },
         { name: "Zwilling Ost", x: 690, y: 200, r: 46, mu: 1.3e6, tone: "hell" }
       ],
-      aim: { angle: 30, power: 60 }, solution: { angle: 0, power: 0 }
+      aim: { angle: 30, power: 60 }, solution: { angle: -11, power: 39 }
     },
     {
       name: "Mondfahrplan", par: 4, maxSteps: 1920,
@@ -44,13 +44,13 @@
         { name: "Anker", x: 515, y: 290, r: 50, mu: 3.0e6, tone: "blau" },
         { name: "Mond Flink", orbit: { cx: 515, cy: 290, R: 155, omega: -0.9, phase: 4.9 }, r: 18, mu: 0.6e6, tone: "mond" }
       ],
-      aim: { angle: 0, power: 60 }, solution: { angle: 0, power: 0 }
+      aim: { angle: 0, power: 60 }, solution: { angle: -19, power: 71.5 }
     },
     {
       name: "Schwungholen", par: 4, maxSteps: 1920,
       pad: { x: 100, y: 500 }, target: { x: 695, y: 300, r: 18 },
       bodies: [{ name: "Koloss", x: 590, y: 300, r: 85, mu: 5.0e6, tone: "glut" }],
-      aim: { angle: 20, power: 60 }, solution: { angle: 0, power: 0 }
+      aim: { angle: 20, power: 60 }, solution: { angle: -5, power: 32.5 }
     },
     {
       name: "Die große Runde", par: 5, maxSteps: 2160,
@@ -61,7 +61,7 @@
         { name: "Mond Trab", orbit: { cx: 660, cy: 400, R: 125, omega: -1.1, phase: 0.4 }, r: 15, mu: 0.3e6, tone: "mond" },
         { name: "Pförtner", x: 860, y: 160, r: 30, mu: 1.0e6, tone: "blau" }
       ],
-      aim: { angle: 30, power: 60 }, solution: { angle: 0, power: 0 }
+      aim: { angle: 30, power: 60 }, solution: { angle: 30, power: 30 }
     }
   ];
 
@@ -343,7 +343,7 @@
       outBest.textContent = best[levelIndex] ? String(best[levelIndex]) : "–";
       levelName.textContent = level.name;
       hudName.textContent = "Level " + (levelIndex + 1) + " · " + level.name;
-      hudTry.textContent = "Versuch " + (attempts + (busy && !flight.ghost ? 0 : 1));
+      hudTry.textContent = attempts === 1 ? "1 Versuch" : attempts + " Versuche";
       canvas.setAttribute("aria-label", "Spielfeld, Level " + (levelIndex + 1) + ": " + level.name +
         ". Pfeiltasten zielen, Leertaste startet.");
       levelButtons.forEach(function (b, i) {

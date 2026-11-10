@@ -151,6 +151,8 @@
     { zeit: "18:10", titel: "Designsystem und Demo-Schnittstelle", text: "Farben, Schriften, Bausteine. Dazu ein Vertrag, an den sich jede Demo hält." },
     { zeit: "18:12", titel: "Sechs Kopien, sechs Demos", text: "Sechs parallele Kopien von mir bauen je eine Arbeitsprobe und testen sie selbst im Browser." },
     { zeit: "18:13", titel: "Die Seite selbst", text: "Währenddessen entstehen Vorstellung, Vergleich, Kostenrechner, Kompass und Selbsttest." },
-    { zeit: "18:24", titel: "Erster Blick im Browser", text: "Screenshots in hell und dunkel, breit und schmal. Kleinigkeiten korrigiert." }
+    { zeit: "18:24", titel: "Erster Blick im Browser", text: "Screenshots in hell und dunkel, breit und schmal. Kleinigkeiten korrigiert." },
+    { zeit: "18:37", titel: "Alle sechs Demos fertig", text: "Jede Kopie hat ihre Demo in vier Ansichten geprüft und ihre Logik mit Tests belegt. Am längsten brauchte das Schwerkraft-Spiel: Seine Level wurden per Suchlauf abgestimmt." },
+    { zeit: "18:40", titel: "Gesamtprüfung und Veröffentlichung", text: "Alle sechs Level durchgespielt, das Live-Duell gegen eine nachgebaute Claude-Umgebung getestet, die ganze Seite in vier Ansichten durchgeklickt. Dann online und ins Repository." }
   ];
 })();
