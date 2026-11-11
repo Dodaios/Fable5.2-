@@ -1,4 +1,4 @@
-/* Hilfsfunktion: Seite im Headless-Chromium öffnen. */
+/* Helper: open a page in headless Chromium. */
 const { chromium } = require('playwright');
 const path = require('path');
 async function open(file) {

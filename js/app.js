@@ -1,39 +1,39 @@
-/* Strömungslabor – Anwendung: Oberfläche, Zeitsteuerung, Umrechnung in SI-Einheiten. */
+/* Flow Lab – application: user interface, time control, conversion to SI units. */
 (function () {
   'use strict';
   const NS = window.NSLab;
   const $ = (id) => document.getElementById(id);
 
-  const STIR_RATE = 2.0;   // Becken: maximale Cursorgeschwindigkeit = 2 Gebietshöhen pro Sekunde
+  const STIR_RATE = 2.0;   // tank: maximum cursor speed = 2 domain heights per second
   const G_ACC = 9.81;
 
   const TOOLS = [
-    { id: 'stir', label: 'Rühren', hint: 'Ziehen, um die Flüssigkeit zu bewegen', icon: '<path d="M12 12c0-1.1.9-2 2-2s3 1.3 3 3.5-2.2 4.5-5 4.5-6-2.7-6-6 3.1-7 7-7 6.5 2 7.5 4"/>' },
-    { id: 'dye', label: 'Farbe', hint: 'Ziehen, um Farbstoff einzubringen (ohne die Strömung zu stören)', icon: '<path d="M12 3.5c3 4.3 5.5 7.2 5.5 10.5a5.5 5.5 0 0 1-11 0c0-3.3 2.500-6.200 5.500-10.500z"/>' },
-    { id: 'rod', label: 'Stab', hint: 'Ein fester Rundstab folgt dem Cursor – dahinter lösen sich Wirbel ab', icon: '<circle cx="12" cy="12" r="6.500"/><circle cx="12" cy="12" r="1" fill="currentColor"/>' },
-    { id: 'wall', label: 'Wand', hint: 'Ziehen, um feste Hindernisse zu zeichnen', icon: '<path d="M4 7h16v10H4zM4 12h16M9 7v5M15 7v5M12 12v5"/>' },
-    { id: 'erase', label: 'Radierer', hint: 'Ziehen, um Hindernisse zu entfernen', icon: '<path d="M5.500 15.500l8-9 5.500 5-7 8H9zM11.500 19.500h8"/>' },
-    { id: 'heat', label: 'Heizen', thermal: true, hint: 'Ziehen, um die Flüssigkeit lokal zu erwärmen', icon: '<path d="M12 3c2 3.500 5 5.500 5 9.500a5 5 0 0 1-10 0c0-2 1-3.200 2-4.200 0 2 .8 3 2 3 .2-3-1-5 1-8.300z"/>' },
-    { id: 'cool', label: 'Kühlen', thermal: true, hint: 'Ziehen, um die Flüssigkeit lokal abzukühlen', icon: '<path d="M12 3v18M4.200 7.500l15.600 9M19.800 7.500l-15.600 9"/>' },
+    { id: 'stir', label: 'Stir', hint: 'Drag to move the fluid', icon: '<path d="M12 12c0-1.1.9-2 2-2s3 1.3 3 3.5-2.2 4.5-5 4.5-6-2.7-6-6 3.1-7 7-7 6.5 2 7.5 4"/>' },
+    { id: 'dye', label: 'Dye', hint: 'Drag to add dye (without disturbing the flow)', icon: '<path d="M12 3.5c3 4.3 5.5 7.2 5.5 10.5a5.5 5.5 0 0 1-11 0c0-3.3 2.500-6.200 5.500-10.500z"/>' },
+    { id: 'rod', label: 'Rod', hint: 'A solid round rod follows the cursor and sheds vortices behind it', icon: '<circle cx="12" cy="12" r="6.500"/><circle cx="12" cy="12" r="1" fill="currentColor"/>' },
+    { id: 'wall', label: 'Wall', hint: 'Drag to draw solid obstacles', icon: '<path d="M4 7h16v10H4zM4 12h16M9 7v5M15 7v5M12 12v5"/>' },
+    { id: 'erase', label: 'Eraser', hint: 'Drag to remove obstacles', icon: '<path d="M5.500 15.500l8-9 5.500 5-7 8H9zM11.500 19.500h8"/>' },
+    { id: 'heat', label: 'Heat', thermal: true, hint: 'Drag to heat the fluid locally', icon: '<path d="M12 3c2 3.500 5 5.500 5 9.500a5 5 0 0 1-10 0c0-2 1-3.200 2-4.200 0 2 .8 3 2 3 .2-3-1-5 1-8.300z"/>' },
+    { id: 'cool', label: 'Cool', thermal: true, hint: 'Drag to cool the fluid locally', icon: '<path d="M12 3v18M4.200 7.500l15.600 9M19.800 7.500l-15.600 9"/>' },
   ];
   const VIEWS = [
-    { id: 0, label: 'Farbstoff', title: 'Farbstoffkonzentration (passiver Skalar)' },
-    { id: 1, label: 'Wirbel', title: 'Wirbelstärke ω = ∂v/∂x − ∂u/∂y' },
-    { id: 2, label: 'Tempo', title: 'Betrag der Geschwindigkeit |u|' },
-    { id: 3, label: 'Druck', title: 'Druck p (relativ zum Mittelwert)' },
-    { id: 4, label: 'Temperatur', title: 'Temperatur', thermal: true },
+    { id: 0, label: 'Dye', title: 'Dye concentration (passive scalar)' },
+    { id: 1, label: 'Vorticity', title: 'Vorticity ω = ∂v/∂x − ∂u/∂y' },
+    { id: 2, label: 'Speed', title: 'Velocity magnitude |u|' },
+    { id: 3, label: 'Pressure', title: 'Pressure p (relative to the mean)' },
+    { id: 4, label: 'Temperature', title: 'Temperature', thermal: true },
   ];
   const SWATCHES = [
-    { id: 'auto', cls: 'rainbow', title: 'Regenbogen' },
+    { id: 'auto', cls: 'rainbow', title: 'Rainbow' },
     { id: 'cyan', col: [0.10, 0.75, 1.00] }, { id: 'magenta', col: [1.00, 0.22, 0.62] },
     { id: 'gold', col: [1.00, 0.78, 0.12] }, { id: 'green', col: [0.20, 1.00, 0.45] },
     { id: 'white', col: [0.95, 0.95, 0.95] },
-    { id: 'clear', cls: 'clear', col: [0, 0, 0], title: 'Farbstoff entfernen' },
+    { id: 'clear', cls: 'clear', col: [0, 0, 0], title: 'Remove dye' },
   ];
 
   const state = {
     scenario: null,
-    fluid: 'wasser', rho: 998.2, mu: 1.002e-3, beta: 2.07e-4, kappa: 1.43e-7,
+    fluid: 'water', rho: 998.2, mu: 1.002e-3, beta: 2.07e-4, kappa: 1.43e-7,
     L: 0.1, U: 0.05, dT: 2,
     ny: 192, scheme: 'auto', cycles: 2,
     view: 0, particles: true, arrows: false,
@@ -51,7 +51,7 @@
   const ptr = { down: false, over: false, x: 0, y: 0, lx: 0, ly: 0, vx: 0, vy: 0, cssX: 0, cssY: 0 };
   let glx, solver, renderer, canvas, hintTimer = 0;
 
-  // ------------------------------------------------------------------ Zahlenformat
+  // ------------------------------------------------------------------ number formatting
   const SUP = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹' };
   function fmt(x, sig) {
     sig = sig || 3;
@@ -62,9 +62,9 @@
       let e = Math.floor(Math.log10(a));
       let m = x / Math.pow(10, e);
       if (Math.abs(m) >= 9.995) { m /= 10; e += 1; }
-      return m.toLocaleString('de-DE', { maximumSignificantDigits: sig }) + '·10' + String(e).split('').map((c) => SUP[c]).join('');
+      return m.toLocaleString('en-US', { maximumSignificantDigits: sig }) + '·10' + String(e).split('').map((c) => SUP[c]).join('');
     }
-    return x.toLocaleString('de-DE', { maximumSignificantDigits: sig });
+    return x.toLocaleString('en-US', { maximumSignificantDigits: sig });
   }
   function fmtUnit(x, kind, sig) {
     const a = Math.abs(x);
@@ -85,7 +85,7 @@
     return [f(5), f(3), f(1)];
   }
 
-  // ------------------------------------------------------------------ Physik <-> Gitter
+  // ------------------------------------------------------------------ physics <-> grid
   function updatePhysics() {
     const sc = state.scenario, ny = solver.ny;
     phys.dx = state.L / ny;
@@ -143,7 +143,7 @@
     rebuild();
   }
 
-  /** Gitter neu anlegen und Anfangszustand herstellen. */
+  /** Rebuild the grid and set up the initial state. */
   function rebuild() {
     const sc = state.scenario;
     const ny = state.ny, nx = sc.aspect * ny;
@@ -188,7 +188,7 @@
     if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
   }
 
-  // ------------------------------------------------------------------ Eingabe
+  // ------------------------------------------------------------------ input
   function toGrid(e) {
     const r = canvas.getBoundingClientRect();
     ptr.cssX = e.clientX - r.left; ptr.cssY = e.clientY - r.top;
@@ -230,12 +230,12 @@
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
-  /** Werkzeugzustand für dieses Bild; liefert Bahnstück und Geschwindigkeit in Gittereinheiten. */
+  /** Tool state for this frame; returns the path segment and velocity in grid units. */
   function toolFrame(wall) {
     const tl = solver.tool;
     const R = state.brush * solver.ny;
     const seg0 = [ptr.lx, ptr.ly], seg1 = [ptr.x, ptr.y];
-    // Cursorgeschwindigkeit (Wanduhr) -> Gittereinheiten: Zellen/s * T0
+    // cursor velocity (wall clock) -> grid units: cells/s * T0
     let vx = (ptr.x - ptr.lx) / wall * phys.T0, vy = (ptr.y - ptr.ly) / wall * phys.T0;
     ptr.vx += (vx - ptr.vx) * 0.55; ptr.vy += (vy - ptr.vy) * 0.55;
     vx = ptr.vx; vy = ptr.vy;
@@ -271,32 +271,32 @@
     solver.tool.seg = [a[0] + (b[0] - a[0]) * f0, a[1] + (b[1] - a[1]) * f0, a[0] + (b[0] - a[0]) * f1, a[1] + (b[1] - a[1]) * f1];
   }
 
-  // ------------------------------------------------------------------ Diagnose
+  // ------------------------------------------------------------------ diagnostics
   function onStats(s) {
-    if (s.steps < run.statsMinSteps) return;          // veraltete Messung (vor einem Sprung in der Zeit)
+    if (s.steps < run.statsMinSteps) return;          // stale measurement (from before a jump in time)
     if (!s.valid) { blowUp(); return; }
     const sc = state.scenario;
     run.stats = s;
-    // Geschwindigkeitsschranke für die CFL-Bedingung: Maximum der letzten Messungen (sie treffen
-    // um 1–2 Bilder verzögert ein), dazu ein Sicherheitszuschlag in frame()
+    // velocity bound for the CFL condition: maximum of the latest measurements (they arrive
+    // 1–2 frames late), plus a safety margin in frame()
     run.ubHist.push(s.cfl);
     if (run.ubHist.length > 3) run.ubHist.shift();
     run.ub = Math.max.apply(null, run.ubHist);
     if (Math.abs(s.pMean) > 1e-4) solver.pShift = 0.25 * s.pMean;
     const ease = (cur, target) => cur + (target - cur) * (target > cur ? 0.35 : 0.04);
     const R = run.ranges;
-    // Wirbelstärke: an der Streuung orientieren, damit dünne Wandgrenzschichten die Skala nicht dominieren
+    // vorticity: scale by the spread so that thin wall boundary layers do not dominate the range
     const wRms = Math.sqrt(2 * s.ens / (solver.nx * solver.ny));
     R.w = Math.max(ease(R.w, Math.min(0.6 * s.wmax, Math.max(5 * wRms, 0.15 * s.wmax))), 1e-6);
     R.u = Math.max(ease(R.u, s.umax), 1e-6);
     R.p = Math.max(ease(R.p, Math.max(s.pMax - s.pMean, s.pMean - s.pMin)), 1e-9);
     R.T = sc.kind === 'thermal' ? 0.5 : Math.max(ease(R.T, Math.max(Math.abs(s.tMax), Math.abs(s.tMin))), 1e-6);
-    // Exponent der exakten Lösung zum Zeitpunkt dieser (verzögert eintreffenden) Messung
+    // exponent of the exact solution at the time of this (delayed) measurement
     let acc = run.tgAcc;
     for (const e of run.accLog) if (e[0] === s.steps) acc = e[1];
     if (run.ke0 === null) { run.ke0 = s.ke; run.acc0 = acc; }
     s.exact = Math.exp(-(acc - run.acc0));
-    // Kraftbeiwerte und Strouhal-Zahl
+    // force coefficients and Strouhal number
     let cd = NaN, cl = NaN;
     if (sc.body) {
       const D = sc.body.D * solver.ny;
@@ -326,7 +326,7 @@
   }
 
   function blowUp() {
-    toast('Die Rechnung ist numerisch instabil geworden – das Feld wurde zurückgesetzt.');
+    toast('The computation became numerically unstable, so the field was reset.');
     rebuild();
   }
   let toastTimer = 0;
@@ -337,7 +337,7 @@
     toastTimer = setTimeout(() => { t.hidden = true; }, 4500);
   }
 
-  // ------------------------------------------------------------------ Hauptschleife
+  // ------------------------------------------------------------------ main loop
   function frame(tNow) {
     requestAnimationFrame(frame);
     const interval = run.lastT ? tNow - run.lastT : 16.7;
@@ -366,8 +366,8 @@
       } else {
         const factor = state.speed === 'realtime' ? 1 : Number(state.speed);
         const target = wall * factor / phys.T0;
-        // Genauigkeit bei zähen Fluiden: die langsamste Reibungsmode (Wellenlänge = Gebietshöhe)
-        // mit mindestens ~5 Schritten je Abklingzeit auflösen, höchstens aber 3 Teilschritte je Bild.
+        // accuracy for viscous fluids: resolve the slowest viscous mode (wavelength = domain height)
+        // with at least ~5 steps per decay time, but use at most 3 substeps per frame.
         const kBox = 2 * Math.PI / solver.ny;
         const dtAcc = Math.max(0.2 / (phys.nuG * kBox * kBox), target / 3);
         while (nSteps < nMax && gridDt < target * 0.999) {
@@ -385,7 +385,7 @@
       if (sc.analytic) { const k = 2 * Math.PI * sc.analytic.m / solver.ny; run.tgAcc += 4 * phys.nuG * k * k * gridDt; }
       run.speedEMA += (gridDt * phys.T0 / wall - run.speedEMA) * 0.08;
       run.stepsEMA += (nSteps - run.stepsEMA) * 0.1;
-      // Rechenbudget an die Bildrate anpassen
+      // adapt the compute budget to the frame rate
       const maxB = state.speed === 'auto' ? 6 : 48;
       if (run.fiEMA > 21 || run.pendingFrames > 4) run.budget = Math.max(1, run.budget * 0.9);
       else if (run.fiEMA < 18.5 && limited) run.budget = Math.min(maxB, run.budget + 0.15);
@@ -416,47 +416,47 @@
     });
   }
 
-  // ------------------------------------------------------------------ Anzeige
+  // ------------------------------------------------------------------ display
   const READOUTS = [
-    ['t', 'simulierte Zeit'], ['speed', 'Tempo'], ['dt', 'Zeitschritt Δt'], ['method', 'Zeitintegration'],
-    ['umax', 'max. Geschwindigkeit'], ['ke', 'kinetische Energie'], ['ens', 'Enstrophie'],
-    ['div', 'Restdivergenz max |∇·u|·Δx/U'], ['cd', 'Widerstandsbeiwert c_W'], ['cl', 'Auftriebsbeiwert c_A'],
-    ['st', 'Strouhal-Zahl St'], ['tg', 'Abweichung von exakter Lösung'],
-    ['res', 'Gitter'], ['resq', 'Auflösung'], ['probe', 'Sonde am Cursor'], ['fps', 'Bildrate'],
+    ['t', 'simulated time'], ['speed', 'speed'], ['dt', 'time step Δt'], ['method', 'time integration'],
+    ['umax', 'max. velocity'], ['ke', 'kinetic energy'], ['ens', 'enstrophy'],
+    ['div', 'residual divergence max |∇·u|·Δx/U'], ['cd', 'drag coefficient c_D'], ['cl', 'lift coefficient c_L'],
+    ['st', 'Strouhal number St'], ['tg', 'deviation from exact solution'],
+    ['res', 'grid'], ['resq', 'resolution'], ['probe', 'probe at cursor'], ['fps', 'frame rate'],
   ];
 
   function regimeText(sc, Re) {
     if (sc.kind === 'thermal') {
       const Ra = phys.Ra;
-      if (Ra < 1708) return 'Unterkritisch (Ra < 1708): reine Wärmeleitung, die Flüssigkeit bleibt in Ruhe.';
-      if (Ra < 5e4) return 'Stationäre Konvektionsrollen.';
-      if (Ra < 1e7) return 'Zeitabhängige Konvektion: warme Fahnen steigen auf, kalte sinken ab.';
-      return 'Turbulente Konvektion mit dünnen Grenzschichten.';
+      if (Ra < 1708) return 'Subcritical (Ra < 1708): pure heat conduction, the fluid stays at rest.';
+      if (Ra < 5e4) return 'Steady convection rolls.';
+      if (Ra < 1e7) return 'Time-dependent convection: warm plumes rise, cold ones sink.';
+      return 'Turbulent convection with thin boundary layers.';
     }
     if (sc.id === 'karman') {
-      if (Re < 5) return 'Schleichende Umströmung: Die Flüssigkeit schmiegt sich an den Zylinder, keine Ablösung.';
-      if (Re < 47) return 'Stationäres Wirbelpaar hinter dem Zylinder – noch keine Schwingung (kritisch: Re ≈ 47).';
-      if (Re < 190) return 'Laminare Kármánsche Wirbelstraße: Wirbel lösen sich periodisch ab.';
-      if (Re < 1000) return 'Unregelmäßiger werdende Wirbelstraße. In 3D treten hier bereits Querinstabilitäten auf.';
-      return 'Stark unregelmäßiger Nachlauf; in der Realität dreidimensional-turbulent.';
+      if (Re < 5) return 'Creeping flow: the fluid hugs the cylinder, no separation.';
+      if (Re < 47) return 'Steady vortex pair behind the cylinder, no oscillation yet (critical: Re ≈ 47).';
+      if (Re < 190) return 'Laminar Kármán vortex street: vortices shed periodically.';
+      if (Re < 1000) return 'The vortex street becomes more irregular. In 3D, spanwise instabilities already appear here.';
+      return 'Highly irregular wake; in reality it is three-dimensional and turbulent.';
     }
-    if (sc.id === 'kavitaet') {
-      if (Re < 100) return 'Ein einzelner, nahezu symmetrischer Hauptwirbel unter dem Deckel.';
-      if (Re < 1500) return 'Der Hauptwirbel wandert zur Mitte, in den unteren Ecken wachsen Sekundärwirbel.';
-      if (Re < 8000) return 'Kräftiger Zentralwirbel mit ausgeprägten Eckenwirbeln; lange Einschwingzeit.';
-      return 'Oberhalb Re ≈ 8000 wird die Kavitätsströmung dauerhaft zeitabhängig.';
+    if (sc.id === 'cavity') {
+      if (Re < 100) return 'A single, nearly symmetric main vortex below the lid.';
+      if (Re < 1500) return 'The main vortex moves towards the centre and secondary vortices grow in the bottom corners.';
+      if (Re < 8000) return 'Strong central vortex with pronounced corner vortices; long spin-up time.';
+      return 'Above Re ≈ 8000 the cavity flow becomes permanently time-dependent.';
     }
-    if (Re < 1) return 'Schleichende Strömung: Reibung dominiert vollständig. Bewegung endet, sobald der Antrieb aufhört – keine Wirbel.';
-    if (Re < 100) return 'Laminar: Wirbel entstehen, werden aber rasch von der Reibung aufgezehrt.';
-    if (Re < 4000) return 'Trägheit überwiegt: Wirbel leben lange, wandern und falten den Farbstoff.';
-    return 'Trägheit dominiert stark: chaotische Wirbelkaskade (zweidimensionale Turbulenz).';
+    if (Re < 1) return 'Creeping flow: friction dominates completely. Motion stops as soon as the forcing stops, and no vortices form.';
+    if (Re < 100) return 'Laminar: vortices form but are quickly consumed by friction.';
+    if (Re < 4000) return 'Inertia prevails: vortices live long, travel and fold the dye.';
+    return 'Inertia dominates strongly: chaotic vortex cascade (two-dimensional turbulence).';
   }
 
   function resolutionQuality() {
     const m = solver.ny / Math.sqrt(Math.max(phys.ReH, 1e-9));
-    if (m >= 2.5) return ['aufgelöst (DNS)', 'good'];
-    if (m >= 1) return ['grenzwertig aufgelöst', 'warn'];
-    return ['unteraufgelöst (implizite LES)', 'bad'];
+    if (m >= 2.5) return ['resolved (DNS)', 'good'];
+    if (m >= 1) return ['marginally resolved', 'warn'];
+    return ['under-resolved (implicit LES)', 'bad'];
   }
 
   function updateReadouts() {
@@ -466,15 +466,15 @@
     $('hudRe').innerHTML = sc.kind === 'thermal' ? 'Ra <b>' + fmt(phys.Ra) + '</b>' : 'Re <b>' + fmt(phys.Re) + '</b>';
     $('hudT').innerHTML = '<i>t</i> = <b>' + fmtUnit(run.simTime, 'time') + '</b>';
     const sp = run.speedEMA;
-    const spTxt = state.paused ? 'pausiert' : (sp >= 0.95 && sp <= 1.05 ? 'Echtzeit' : sp < 1 ? 'Zeitlupe ' + fmt(sp, 2) + '×' : 'Zeitraffer ' + fmt(sp, 2) + '×');
+    const spTxt = state.paused ? 'paused' : (sp >= 0.95 && sp <= 1.05 ? 'real time' : sp < 1 ? 'slow motion ' + fmt(sp, 2) + '×' : 'fast forward ' + fmt(sp, 2) + '×');
     $('hudSpeed').innerHTML = '<b>' + spTxt + '</b>';
     $('hudSpeed').classList.toggle('warn', state.speed === 'realtime' && sp < 0.9 && !state.paused);
 
     set('t', fmtUnit(run.simTime, 'time'));
-    set('speed', fmt(sp, 2) + ' × Echtzeit · ' + fmt(run.stepsEMA, 2) + ' Schritte/Bild');
+    set('speed', fmt(sp, 2) + ' × real time · ' + fmt(run.stepsEMA, 2) + ' steps/frame');
     const pl = solver.lastPlan;
     set('dt', fmtUnit(pl.dt * phys.T0, 'time') + '  (CFL ' + fmt(pl.dt * (s ? s.cfl : 0), 2) + ')');
-    set('method', pl.mode === 'rkc' ? 'RKC, ' + pl.s + ' Stufen (steif)' : 'RK3 explizit');
+    set('method', pl.mode === 'rkc' ? 'RKC, ' + pl.s + ' stages (stiff)' : 'RK3 explicit');
     show('cd', !!sc.body); show('cl', !!sc.body); show('st', !!sc.body); show('tg', !!sc.analytic);
     if (s) {
       set('umax', fmtUnit(s.umax * phys.U0, 'vel'));
@@ -484,7 +484,7 @@
       if (sc.body) {
         set('cd', fmt(run.cdEMA, 3));
         set('cl', fmt(2 * (s.Fy || 0) / (sc.body.D * solver.ny), 3));
-        set('st', isFinite(run.St) ? fmt(run.St, 3) : '– (noch keine Schwingung)');
+        set('st', isFinite(run.St) ? fmt(run.St, 3) : '– (no oscillation yet)');
       }
       if (sc.analytic && run.ke0) {
         const dev = s.ke / run.ke0 / s.exact - 1;
@@ -493,10 +493,10 @@
       const pr = s.probe;
       set('probe', ptr.over ? '|u| = ' + fmtUnit(Math.hypot(pr.u, pr.v) * phys.U0, 'vel') + ' · p = ' + fmtUnit((pr.p - s.pMean) * state.rho * phys.U0 * phys.U0, 'pres') : '–');
     }
-    set('res', solver.nx + ' × ' + solver.ny + ' Zellen, Δx = ' + fmtUnit(phys.dx, 'len'));
+    set('res', solver.nx + ' × ' + solver.ny + ' cells, Δx = ' + fmtUnit(phys.dx, 'len'));
     const q = resolutionQuality();
     set('resq', q[0], q[1]);
-    set('fps', fmt(1000 / run.fiEMA, 2) + ' Bilder/s');
+    set('fps', fmt(1000 / run.fiEMA, 2) + ' frames/s');
     updateLegend();
     drawPlot();
   }
@@ -516,11 +516,11 @@
       ctx.fillStyle = col(c);
       ctx.fillRect(x, 0, 1, H);
     }
-    if (v === 0) { title = 'Farbstoffkonzentration'; lo = '0'; hi = '1'; }
-    else if (v === 1) { const w = R.w * phys.U0 / phys.dx; title = 'Wirbelstärke ω  (blau: im Uhrzeigersinn)'; lo = '−' + fmt(w, 2); hi = '+' + fmt(w, 2) + ' 1/s'; }
-    else if (v === 2) { title = 'Geschwindigkeit |u|'; lo = '0'; hi = fmtUnit(R.u * phys.U0, 'vel', 2); }
-    else if (v === 3) { const p = R.p * state.rho * phys.U0 * phys.U0; title = 'Druck p − p̄'; lo = '−' + fmtUnit(p, 'pres', 2); hi = '+' + fmtUnit(p, 'pres', 2); }
-    else { title = 'Temperatur T − T̄'; lo = '−' + fmt(R.T * state.dT, 2); hi = '+' + fmt(R.T * state.dT, 2) + ' K'; }
+    if (v === 0) { title = 'Dye concentration'; lo = '0'; hi = '1'; }
+    else if (v === 1) { const w = R.w * phys.U0 / phys.dx; title = 'Vorticity ω  (blue: clockwise)'; lo = '−' + fmt(w, 2); hi = '+' + fmt(w, 2) + ' 1/s'; }
+    else if (v === 2) { title = 'Speed |u|'; lo = '0'; hi = fmtUnit(R.u * phys.U0, 'vel', 2); }
+    else if (v === 3) { const p = R.p * state.rho * phys.U0 * phys.U0; title = 'Pressure p − p̄'; lo = '−' + fmtUnit(p, 'pres', 2); hi = '+' + fmtUnit(p, 'pres', 2); }
+    else { title = 'Temperature T − T̄'; lo = '−' + fmt(R.T * state.dT, 2); hi = '+' + fmt(R.T * state.dT, 2) + ' K'; }
     $('legendTitle').textContent = title; $('legendMin').textContent = lo; $('legendMax').textContent = hi;
   }
 
@@ -529,12 +529,12 @@
     ctx.clearRect(0, 0, W, H);
     const series = [];
     if (sc.body) {
-      series.push({ key: 'cd', color: '#4cc2ff', name: 'c_W (Widerstand)' });
-      series.push({ key: 'cl', color: '#ff8a4c', name: 'c_A (Auftrieb)' });
+      series.push({ key: 'cd', color: '#4cc2ff', name: 'c_D (drag)' });
+      series.push({ key: 'cl', color: '#ff8a4c', name: 'c_L (lift)' });
     } else {
-      series.push({ key: 'ke', color: '#4cc2ff', name: 'kinetische Energie', norm: true });
-      if (sc.analytic) series.push({ key: 'tgA', color: '#ffd166', name: 'exakte Lösung', scaleWith: 'ke', dash: true });
-      else series.push({ key: 'ens', color: '#ff8a4c', name: 'Enstrophie', norm: true });
+      series.push({ key: 'ke', color: '#4cc2ff', name: 'kinetic energy', norm: true });
+      if (sc.analytic) series.push({ key: 'tgA', color: '#ffd166', name: 'exact solution', scaleWith: 'ke', dash: true });
+      else series.push({ key: 'ens', color: '#ff8a4c', name: 'enstrophy', norm: true });
     }
     $('plotLegend').innerHTML = series.map((s) => '<span style="--c:' + s.color + '">' + s.name + '</span>').join('');
     if (h.length < 2) return;
@@ -567,7 +567,7 @@
     if (sc.body) { ctx.textAlign = 'left'; ctx.fillText(fmt(hi, 2), 6, 22); }
   }
 
-  // ------------------------------------------------------------------ Bedienelemente
+  // ------------------------------------------------------------------ controls
   function setPressed(container, attr, value) {
     for (const b of container.children) b.setAttribute(attr, String(b.dataset.id === String(value)));
   }
@@ -590,45 +590,45 @@
     if (document.activeElement !== $('betaInput')) $('betaInput').value = +(state.beta * 1e4).toPrecision(4);
     if (document.activeElement !== $('kappaInput')) $('kappaInput').value = +(state.kappa * 1e6).toPrecision(4);
     $('nuOut').textContent = fmt(phys.nu * 1e6) + ' mm²/s';
-    $('lenLabel').innerHTML = (sc.aspect === 1 ? 'Kantenlänge' : 'Höhe') + ' des Gebiets <i>H</i>';
+    $('lenLabel').innerHTML = (sc.aspect === 1 ? 'Edge length' : 'Height') + ' of the domain <i>H</i>';
     $('lenSlider').value = Math.log10(state.L);
     $('lenOut').textContent = fmtUnit(state.L, 'len');
     $('fieldU').hidden = sc.kind !== 'driven';
-    $('uLabel').innerHTML = (sc.id === 'kavitaet' ? 'Deckelgeschwindigkeit' : sc.id === 'kh' ? 'Geschwindigkeitsdifferenz' : sc.id === 'tg' ? 'Anfangsgeschwindigkeit' : 'Anströmgeschwindigkeit') + ' <i>U</i>';
+    $('uLabel').innerHTML = (sc.id === 'cavity' ? 'Lid velocity' : sc.id === 'kh' ? 'Velocity difference' : sc.id === 'tg' ? 'Initial velocity' : 'Inflow velocity') + ' <i>U</i>';
     $('uSlider').value = Math.log10(state.U);
     $('uOut').textContent = fmtUnit(state.U, 'vel');
     $('dtSlider').value = Math.log10(state.dT);
     $('dtOut').textContent = fmt(state.dT) + ' K';
-    // Reynolds-Kasten
+    // Reynolds box
     const thermal = sc.kind === 'thermal';
     const lead = thermal ? phys.Ra : phys.Re;
-    $('reTitle').textContent = thermal ? 'Rayleigh-Zahl' : 'Reynolds-Zahl';
+    $('reTitle').textContent = thermal ? 'Rayleigh number' : 'Reynolds number';
     $('reOut').textContent = fmt(lead);
-    const uTxt = sc.kind === 'stir' ? fmtUnit(phys.U0, 'vel') + ' (volle Rührgeschwindigkeit)' : fmtUnit(phys.U0, 'vel');
+    const uTxt = sc.kind === 'stir' ? fmtUnit(phys.U0, 'vel') + ' (full stirring speed)' : fmtUnit(phys.U0, 'vel');
     $('reFormula').innerHTML = thermal
-      ? '<i>Ra</i> = <i>g β</i> Δ<i>T H</i>³ / (<i>ν κ</i>) – Auftrieb gegen Reibung und Wärmeleitung'
+      ? '<i>Ra</i> = <i>g β</i> Δ<i>T H</i>³ / (<i>ν κ</i>) – buoyancy versus friction and heat conduction'
       : '<i>Re</i> = <i>U</i>·<i>L</i> / <i>ν</i> = ' + uTxt + ' · ' + fmtUnit(sc.refLen * state.L, 'len') + ' / ' + fmt(phys.nu * 1e6) + ' mm²/s';
     $('reMarker').style.left = Math.min(100, Math.max(0, (Math.log10(Math.max(lead, 1e-9)) + 2) * 10)) + '%';
     $('reRegime').textContent = regimeText(sc, phys.Re);
-    let extra = 'Bezugslänge <i>L</i>: ' + sc.refName + ' = <b>' + fmtUnit(sc.refLen * state.L, 'len') + '</b>';
+    let extra = 'Reference length <i>L</i>: ' + sc.refName + ' = <b>' + fmtUnit(sc.refLen * state.L, 'len') + '</b>';
     if (thermal) {
-      extra = 'Prandtl-Zahl <i>Pr</i> = <i>ν</i>/<i>κ</i> = <b>' + fmt(phys.Pr) + '</b> · Freifallgeschwindigkeit √(<i>gβ</i>Δ<i>T H</i>) = <b>' + fmtUnit(phys.U0, 'vel') + '</b> · damit <i>Re</i> = <b>' + fmt(phys.Re) + '</b>';
+      extra = 'Prandtl number <i>Pr</i> = <i>ν</i>/<i>κ</i> = <b>' + fmt(phys.Pr) + '</b> · free-fall velocity √(<i>gβ</i>Δ<i>T H</i>) = <b>' + fmtUnit(phys.U0, 'vel') + '</b> · hence <i>Re</i> = <b>' + fmt(phys.Re) + '</b>';
     } else if (sc.kind === 'stir') {
-      extra += '<br>Der Cursor bewegt sich maßstabsgetreu: eine Beckenhöhe pro Sekunde entspricht <b>' + fmtUnit(state.L, 'vel') + '</b>.';
+      extra += '<br>The cursor moves to scale: one tank height per second corresponds to <b>' + fmtUnit(state.L, 'vel') + '</b>.';
     }
     $('extraNumbers').innerHTML = extra;
     const pre = $('rePresets');
     pre.innerHTML = '';
     if (sc.kind === 'driven') {
-      const list = sc.id === 'karman' ? [20, 60, 100, 200, 1000] : sc.id === 'kavitaet' ? [10, 100, 400, 1000, 5000] : sc.id === 'tg' ? [10, 100, 1000] : [100, 1000, 10000];
+      const list = sc.id === 'karman' ? [20, 60, 100, 200, 1000] : sc.id === 'cavity' ? [10, 100, 400, 1000, 5000] : sc.id === 'tg' ? [10, 100, 1000] : [100, 1000, 10000];
       for (const re of list) {
         const b = document.createElement('button');
-        b.textContent = 'Re = ' + re.toLocaleString('de-DE');
+        b.textContent = 'Re = ' + re.toLocaleString('en-US');
         b.onclick = () => { state.U = re * phys.nu / (sc.refLen * state.L); paramsChanged(); };
         pre.appendChild(b);
       }
     }
-    // Werkzeuge / Ansichten
+    // tools / views
     for (const b of $('tools').children) b.hidden = !!b.dataset.thermal && sc.kind !== 'thermal';
     for (const b of $('views').children) b.hidden = !!b.dataset.thermal && sc.kind !== 'thermal';
     setPressed($('tools'), 'aria-checked', state.tool);
@@ -642,8 +642,8 @@
     $('scheme').value = state.scheme;
     $('cycles').value = state.cycles; $('cyclesOut').textContent = state.cycles;
     const q = resolutionQuality();
-    $('resInfo').innerHTML = 'Zell-Reynolds-Zahl <i>U</i>Δ<i>x</i>/<i>ν</i> = <b>' + fmt(1 / phys.nuG) + '</b> · Status: <b>' + q[0] + '</b>' +
-      (glx.precision !== 32 ? '<br>Hinweis: Dieses Gerät rechnet nur mit 16-Bit-Gleitkomma – reduzierte Genauigkeit.' : '');
+    $('resInfo').innerHTML = 'Cell Reynolds number <i>U</i>Δ<i>x</i>/<i>ν</i> = <b>' + fmt(1 / phys.nuG) + '</b> · Status: <b>' + q[0] + '</b>' +
+      (glx.precision !== 32 ? '<br>Note: this device only computes with 16-bit floating point, so accuracy is reduced.' : '');
     const hintText = (TOOLS.find((t) => t.id === state.tool) || TOOLS[0]).hint;
     if ($('hint').textContent !== hintText) {
       $('hint').textContent = hintText;
@@ -658,13 +658,13 @@
     $('btnPlay').innerHTML = state.paused
       ? '<svg viewBox="0 0 24 24"><path d="M7 4.500l12 7.500-12 7.500z"/></svg>'
       : '<svg viewBox="0 0 24 24"><path d="M6.500 5h4v14h-4zM13.500 5h4v14h-4z"/></svg>';
-    $('btnPlay').setAttribute('aria-label', state.paused ? 'Weiter' : 'Pause');
+    $('btnPlay').setAttribute('aria-label', state.paused ? 'Resume' : 'Pause');
   }
 
-  /** Stoff- oder Maßstabsparameter geändert: kein Neuaufbau nötig, nur Kennzahlen neu. */
+  /** Fluid or scale parameters changed: no rebuild needed, only the dimensionless numbers. */
   function paramsChanged() {
     updatePhysics();
-    if (state.scenario.analytic) { /* exakte Lösung wird über tgAcc laufend mitintegriert */ }
+    if (state.scenario.analytic) { /* the exact solution is integrated along continuously via tgAcc */ }
     syncUI();
   }
 
@@ -674,7 +674,7 @@
     scSel.onchange = () => loadScenario(scSel.value, true);
     const flSel = $('fluid');
     for (const f of NS.fluids) flSel.add(new Option(f.name, f.id));
-    flSel.add(new Option('Eigene Flüssigkeit …', 'custom'));
+    flSel.add(new Option('Custom fluid …', 'custom'));
     flSel.onchange = () => { if (flSel.value !== 'custom') setFluid(flSel.value); paramsChanged(); };
 
     const num = (el, cb) => el.addEventListener('input', () => { const v = parseFloat(String(el.value).replace(',', '.')); if (isFinite(v) && v > 0) { cb(v); paramsChanged(); } });
@@ -710,7 +710,7 @@
     for (const s of SWATCHES) {
       const b = document.createElement('button');
       b.className = 'swatch ' + (s.cls || ''); b.dataset.id = s.id; b.setAttribute('role', 'radio');
-      b.title = s.title || 'Farbstoff';
+      b.title = s.title || 'Dye';
       if (!s.cls) b.style.background = 'rgb(' + s.col.map((c) => Math.round(c * 255)).join(',') + ')';
       b.onclick = () => { state.dye = s.id; syncUI(); };
       sw.appendChild(b);
@@ -762,36 +762,36 @@
   }
   function exportSeries() {
     const f = state.rho * phys.U0 * phys.U0;
-    const rows = ['t [s];E_kin [J/m];Enstrophie [m^2/s^2];u_max [m/s];F_x [N/m];F_y [N/m]'];
+    const rows = ['t [s],E_kin [J/m],enstrophy [m^2/s^2],u_max [m/s],F_x [N/m],F_y [N/m]'];
     for (const p of run.hist) {
-      rows.push([p.t, p.ke * f * phys.dx * phys.dx, p.ens * phys.U0 * phys.U0, p.umax * phys.U0, p.fx * f * phys.dx, p.fy * f * phys.dx].map((v) => v.toExponential(6)).join(';'));
+      rows.push([p.t, p.ke * f * phys.dx * phys.dx, p.ens * phys.U0 * phys.U0, p.umax * phys.U0, p.fx * f * phys.dx, p.fy * f * phys.dx].map((v) => v.toExponential(6)).join(','));
     }
-    download('zeitreihe.csv', new Blob([rows.join('\n')], { type: 'text/csv' }));
+    download('timeseries.csv', new Blob([rows.join('\n')], { type: 'text/csv' }));
   }
   function exportField() {
     const v = solver.readVelocity(), p = solver.readPressure(), nx = solver.nx, ny = solver.ny;
     const f = state.rho * phys.U0 * phys.U0, pm = run.stats ? run.stats.pMean : 0;
-    const rows = ['x [m];y [m];u [m/s];v [m/s];p [Pa]'];
+    const rows = ['x [m],y [m],u [m/s],v [m/s],p [Pa]'];
     for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
       const u = 0.5 * (v.u[j * (nx + 1) + i] + v.u[j * (nx + 1) + i + 1]) * phys.U0;
       const w = 0.5 * (v.v[j * nx + i] + v.v[(j + 1) * nx + i]) * phys.U0;
-      rows.push([((i + 0.5) * phys.dx).toExponential(5), ((j + 0.5) * phys.dx).toExponential(5), u.toExponential(5), w.toExponential(5), ((p[j * nx + i] - pm) * f).toExponential(5)].join(';'));
+      rows.push([((i + 0.5) * phys.dx).toExponential(5), ((j + 0.5) * phys.dx).toExponential(5), u.toExponential(5), w.toExponential(5), ((p[j * nx + i] - pm) * f).toExponential(5)].join(','));
     }
-    download('feld.csv', new Blob([rows.join('\n')], { type: 'text/csv' }));
+    download('field.csv', new Blob([rows.join('\n')], { type: 'text/csv' }));
   }
   function exportPng() {
     draw();
-    canvas.toBlob((b) => { if (b) download('stroemung.png', b); }, 'image/png');
+    canvas.toBlob((b) => { if (b) download('flow.png', b); }, 'image/png');
   }
 
   // ------------------------------------------------------------------ Start
   function fatal(msg) {
     const f = $('fatal');
     f.hidden = false;
-    f.innerHTML = '<div><h1>Strömungslabor kann nicht starten</h1><p>' + msg + '</p><p>Benötigt wird ein aktueller Browser mit WebGL 2 (Chrome, Edge, Firefox, Safari ab 15).</p></div>';
+    f.innerHTML = '<div><h1>Flow Lab cannot start</h1><p>' + msg + '</p><p>A current browser with WebGL 2 is required (Chrome, Edge, Firefox, Safari 15 or later).</p></div>';
   }
 
-  /** Kurzer Leistungstest der Grafikkarte: wählt die Gitterauflösung so, dass Echtzeit erreichbar ist. */
+  /** Short GPU benchmark: picks the grid resolution so that real time is achievable. */
   function benchmarkResolution() {
     try {
       const ny = 128, nx = 256;
@@ -802,12 +802,12 @@
       solver.initScalars({});
       solver.initMask([]);
       for (let k = 0; k < 3; k++) solver.step(0.5, 1);
-      glx.read(solver.corr);                       // Aufwärmen (Shader übersetzen) abwarten
+      glx.read(solver.corr);                       // wait for warm-up (shader compilation)
       const t0 = performance.now();
       const n = 8;
       for (let k = 0; k < n; k++) solver.step(0.5, 1);
       glx.read(solver.corr);
-      const ms = (performance.now() - t0) / n;     // ms je Zeitschritt bei 256 x 128
+      const ms = (performance.now() - t0) / n;     // ms per time step at 256 x 128
       run.benchMs = ms;
       if (ms < 0.25) return 384;
       if (ms < 0.7) return 256;
@@ -833,13 +833,13 @@
     const q = new URLSearchParams(location.search);
     buildUI();
     bindPointer();
-    canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); fatal('Der Grafikkontext ging verloren. Bitte die Seite neu laden.'); });
+    canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); fatal('The graphics context was lost. Please reload the page.'); });
     if (q.get('res')) state.ny = Math.max(32, Math.min(1024, +q.get('res') || state.ny));
     else state.ny = benchmarkResolution();
-    loadScenario(q.get('szenario') || 'becken', true);
+    loadScenario(q.get('scenario') || 'tank', true);
     NS.app = {
       state, phys, run, solver, renderer, glx, rebuild, loadScenario, paramsChanged, ptr,
-      /** n Zeitschritte ohne Darstellung rechnen (für automatisierte Tests). */
+      /** Advance n time steps without rendering (for automated tests). */
       advance(n) {
         const sc = state.scenario;
         let g = 0;

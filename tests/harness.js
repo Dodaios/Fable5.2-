@@ -1,4 +1,4 @@
-/* Validierungsfälle – laufen im Browser, gesteuert von tests/validate.js (Playwright). */
+/* Validation cases – run in the browser, driven by tests/validate.js (Playwright). */
 (function () {
   'use strict';
   const NS = window.NSLab;
@@ -15,7 +15,7 @@
 
   T.info = () => ({ precision: glx.precision, renderer: (() => { const e = glx.gl.getExtension('WEBGL_debug_renderer_info'); return e ? glx.gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : '?'; })() });
 
-  /** Mehrgitter: Residuenreduktion pro V-Zyklus für eine zufällige rechte Seite. */
+  /** Multigrid: residual reduction per V-cycle for a random right-hand side. */
   T.multigrid = (nx, ny, bc, cycles) => {
     solver.configure({ nx, ny, bc });
     const r = rng(7), n = nx * ny, rhs = new Float32Array(n);
@@ -32,7 +32,7 @@
     return { levels: solver.mg.map((L) => L.w + 'x' + L.h), norms, factors: norms.slice(1).map((v, k) => v / norms[k]) };
   };
 
-  /** Projektion eines zufälligen Feldes: verbleibende Divergenz. */
+  /** Projection of a random field: remaining divergence. */
   T.projection = (nx, ny, bc, cycles) => {
     solver.configure({ nx, ny, bc });
     const r = rng(11), W = nx + 1, H = ny + 1, d = new Float32Array(W * H * 2);
@@ -49,7 +49,7 @@
     return { divBefore: before.divMax, divAfter: after.divMax, ratio: after.divMax / before.divMax };
   };
 
-  /** Taylor-Green-Wirbel: Vergleich mit der exakten Lösung u ~ exp(-2 nu k^2 t). */
+  /** Taylor–Green vortex: comparison with the exact solution u ~ exp(-2 nu k^2 t). */
   T.taylorGreen = (N, nu, tEnd, opts) => {
     opts = opts || {};
     solver.configure({ nx: N, ny: N, bc: [2, 2, 2, 2] });
@@ -66,9 +66,9 @@
     const s1 = solver.readStatsSync();
     const k = 2 * Math.PI / N;
     const exact = Math.exp(-4 * nu * k * k * solver.time);
-    const lam = 2 * (2 - 2 * Math.cos(k));            // Eigenwert des diskreten Laplace-Operators
+    const lam = 2 * (2 - 2 * Math.cos(k));            // eigenvalue of the discrete Laplacian
     const exactDisc = Math.exp(-2 * nu * lam * solver.time);
-    // Feldfehler
+    // field error
     const f = solver.readVelocity();
     const amp = Math.exp(-2 * nu * k * k * solver.time);
     let e2 = 0, emax = 0, cnt = 0;
@@ -88,7 +88,7 @@
     };
   };
 
-  /** Poiseuille-Strömung (Volumenkraft, Haftwände): stationäres Parabelprofil. */
+  /** Poiseuille flow (body force, no-slip walls): steady parabolic profile. */
   T.poiseuille = (ny, nu, opts) => {
     opts = opts || {};
     const nx = 16;
@@ -113,7 +113,7 @@
     return { ny, nu, steps: nSteps, mode: solver.lastPlan.mode, s: solver.lastPlan.s, dt: solver.lastPlan.dt, errMax: emax, vmax, uCenter: prof[ny >> 1] };
   };
 
-  /** Deckelgetriebene Kavität: schrittweise bis zum stationären Zustand. */
+  /** Lid-driven cavity: advance step by step to the steady state. */
   T.cavityInit = (N, Re, opts) => {
     opts = opts || {};
     solver.configure({ nx: N, ny: N, bc: [0, 0, 0, 0], wallU: [0, 1] });
@@ -136,11 +136,11 @@
     return { t: solver.time / N, steps: solver.steps, mode: solver.lastPlan.mode, s: solver.lastPlan.s, dt: solver.lastPlan.dt, change, uc, vc, divMax: st.divMax, valid: st.valid };
   };
 
-  /** Zylinder im Kanal nach Schäfer & Turek (1996), Testfall 2D-2 (Re = 100, instationär).
-   *  Kanal 2.2 x 0.41, Zylinder D = 0.1 bei (0.2, 0.2), parabolisches Einströmprofil, Haftwände. */
+  /** Cylinder in a channel after Schäfer & Turek (1996), test case 2D-2 (Re = 100, unsteady).
+   *  Channel 2.2 x 0.41, cylinder D = 0.1 at (0.2, 0.2), parabolic inflow profile, no-slip walls. */
   T.cylinderInit = (ny, Re, opts) => {
     opts = opts || {};
-    const h = 0.41 / ny;                       // Zellgröße in Benchmark-Einheiten
+    const h = 0.41 / ny;                       // cell size in benchmark units
     const nx = Math.round(2.2 / h / 16) * 16;
     const D = 0.1 / h;
     solver.configure({ nx, ny, bc: [3, 4, 0, 0], inflow: [1, 1, 0.5, 0.1] });
@@ -166,12 +166,12 @@
     return { rows: out, dt: solver.lastPlan.dt, mode: solver.lastPlan.mode, steps: solver.steps };
   };
 
-  /** Abklingende Scherwelle u = sin(k y): testet die Zeitintegration der Reibung. */
+  /** Decaying shear wave u = sin(k y): tests the time integration of viscosity. */
   T.shearDecay = (ny, nu, tEnd, dt, forceStiff) => {
     const nx = 16;
     solver.configure({ nx, ny, bc: [2, 2, 2, 2] });
     Object.assign(solver.params, { nu, upw: [0, 0], cycles: 2, cfl: 1e9, force: [0, 0], buoy: [0, 0], diff: [0, 0, 0, 0], forceStiff });
-    // u = sin(2 pi (j+1/2)/ny) über Taylor-Green-Init mit kx -> 0 geht nicht; direkt hochladen
+    // u = sin(2 pi (j+1/2)/ny) cannot be obtained from the Taylor–Green init with kx -> 0; upload directly
     const W = nx + 1, H = ny + 1, d = new Float32Array(W * H * 2), k = 2 * Math.PI / ny;
     for (let j = 0; j < ny; j++) for (let i = 0; i < W; i++) d[2 * (j * W + i)] = Math.sin(k * (j + 0.5));
     glx.upload(solver.u, d);

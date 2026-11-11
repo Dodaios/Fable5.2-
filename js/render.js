@@ -1,21 +1,21 @@
-/* Darstellung: Feldansichten (Farbstoff, Wirbelstärke, Betrag, Druck, Temperatur),
- * Partikel-Stromspuren und Geschwindigkeitspfeile. */
+/* Rendering: field views (dye, vorticity, speed, pressure, temperature),
+ * particle streaks and velocity arrows. */
 (function () {
   'use strict';
   const NS = (window.NSLab = window.NSLab || {});
   const S = NS.shaders;
 
-  // Farbskalen (Stützstellen; dieselben Daten füttern Shader und Legende)
+  // colour maps (control points; the same data feeds the shaders and the legend)
   const CMAPS = {
     inferno: ['#000004', '#1b0c41', '#4a0c6b', '#781c6d', '#a52c60', '#cf4446', '#ed6925', '#fb9b06', '#f7d13d', '#fcffa4'],
     viridis: ['#440154', '#482878', '#3e4989', '#31688e', '#26828e', '#1f9e89', '#35b779', '#6ece58', '#b5de2b', '#fde725'],
   };
   const hex = (h) => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
   const BG = [0.016, 0.022, 0.036];
-  const DIV_NEG = [0.10, 0.50, 1.00];   // negativ: blau
-  const DIV_POS = [1.00, 0.40, 0.10];   // positiv: orange-rot
+  const DIV_NEG = [0.10, 0.50, 1.00];   // negative: blue
+  const DIV_POS = [1.00, 0.40, 0.10];   // positive: orange-red
 
-  /** Divergierende Skala, t in [-1,1] – identisch zur GLSL-Funktion divMap. */
+  /** Diverging map, t in [-1,1] – identical to the GLSL function divMap. */
   function divColor(t) {
     const a = Math.pow(Math.min(Math.abs(t), 1), 0.75);
     const c = t >= 0 ? DIV_POS : DIV_NEG;
@@ -52,8 +52,8 @@ uniform sampler2D uMask;
 uniform ivec2 uN;
 uniform ivec2 uPer;
 uniform vec2 uRes;
-uniform int uView;        // 0 Farbstoff, 1 Wirbelstärke, 2 Betrag, 3 Druck, 4 Temperatur
-uniform vec2 uRange;      // Skalierung 1/Bereich, Nullpunkt
+uniform int uView;        // 0 dye, 1 vorticity, 2 speed, 3 pressure, 4 temperature
+uniform vec2 uRange;      // scale 1/range, zero point
 uniform vec3 uCmap[10];
 uniform vec3 uBg;
 uniform vec3 uDivNeg;
@@ -92,7 +92,7 @@ vec4 bsplineC(sampler2D t, vec2 pos) {
   }
   return s;
 }
-// Knotenwerte (Wirbelstärke) liegen auf ganzzahligen Koordinaten; Textur hat (Nx+1) x (Ny+1) Texel
+// node values (vorticity) sit on integer coordinates; the texture has (Nx+1) x (Ny+1) texels
 float bilinVtx(sampler2D t, vec2 pos) {
   ivec2 i = ivec2(floor(pos));
   vec2 f = pos - vec2(i);
@@ -131,7 +131,7 @@ void main() {
   } else {
     col = divMap((bilinC(uScal, pos).a - uRange.y) * uRange.x);
   }
-  // Festkörper
+  // solid bodies
   float m = bilinC(uMask, pos).x;
   float edge = 1.0 - smoothstep(0.0, 0.22, abs(m - 0.5));
   vec3 solid = vec3(0.23, 0.26, 0.31) + 0.03 * sin(0.9 * (gl_FragCoord.x + gl_FragCoord.y));
@@ -141,7 +141,7 @@ void main() {
 }
 `;
 
-  // --- Partikel ---------------------------------------------------------------
+  // --- particles --------------------------------------------------------------
   const VEL_AT = `
 vec2 velAt(vec2 x) {
   vec2 a = vec2(x.x, x.y - 0.5);
@@ -162,8 +162,8 @@ vec2 velAt(vec2 x) {
 uniform sampler2D uVel;
 uniform sampler2D uPos;
 uniform sampler2D uMask;
-uniform float uDt;       // Gitterzeit dieses Bildes
-uniform float uAge;      // Wanduhrzeit dieses Bildes [s]
+uniform float uDt;       // grid time of this frame
+uniform float uAge;      // wall-clock time of this frame [s]
 uniform float uSeed;
 uniform int uReset;
 out vec4 o;
@@ -209,10 +209,10 @@ precision highp sampler2D;
   const PART_VS = VS_HEAD + S.COMMON + `
 uniform sampler2D uVel;
 uniform sampler2D uPos;
-uniform int uSide;       // Kantenlänge der Partikeltextur
-uniform float uStreak;   // Spurlänge [Zellen je Geschwindigkeitseinheit]
-uniform vec2 uPx;        // Pixelgröße in Clip-Koordinaten
-uniform float uWidth;    // Breite in Pixeln
+uniform int uSide;       // side length of the particle texture
+uniform float uStreak;   // streak length [cells per unit velocity]
+uniform vec2 uPx;        // pixel size in clip coordinates
+uniform float uWidth;    // width in pixels
 out float vAlpha;
 out vec2 vUV;
 ` + VEL_AT + `
@@ -247,13 +247,13 @@ void main() {
 }
 `;
 
-  // --- Pfeile -----------------------------------------------------------------
+  // --- arrows -----------------------------------------------------------------
   const ARROW_VS = VS_HEAD + S.COMMON + `
 uniform sampler2D uVel;
-uniform ivec2 uGrid;     // Pfeile in x, y
-uniform float uScale;    // 1 / Referenzgeschwindigkeit
+uniform ivec2 uGrid;     // arrows in x, y
+uniform float uScale;    // 1 / reference velocity
 uniform vec2 uPx;
-uniform float uCell;     // Abstand der Pfeile in Pixeln
+uniform float uCell;     // arrow spacing in pixels
 out float vA;
 ` + VEL_AT + `
 void main() {
@@ -267,7 +267,7 @@ void main() {
   vec2 nrm = vec2(-dir.y, dir.x);
   float w = max(0.75, uCell * 0.035);
   float hl = min(L * 0.45, uCell * 0.26), hw = hl * 0.55;
-  // 9 Ecken: Schaft (2 Dreiecke) + Spitze
+  // 9 vertices: shaft (2 triangles) + head
   vec2 q;
   int k = gl_VertexID;
   if (k == 0) q = vec2(0.0, -w); else if (k == 1) q = vec2(L - hl, -w); else if (k == 2) q = vec2(L - hl, w);
@@ -304,7 +304,7 @@ void main() { o = vec4(uColor * vA * 0.85, vA * 0.85); }
       this.needReset = true;
     }
 
-    /** nach solver.configure aufrufen */
+    /** call after solver.configure */
     resize(particleCount) {
       const glx = this.glx, s = this.solver;
       glx.free(this.viz); glx.free(this.pos); glx.free(this.posB);

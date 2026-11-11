@@ -39,7 +39,7 @@ i { font-family: "Cambria Math", "STIX Two Math", "Times New Roman", Georgia, se
   height: 100dvh;
 }
 
-/* ---------------------------------------------------------------- Bühne */
+/* ---------------------------------------------------------------- stage */
 #stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 
 #topbar {
@@ -183,7 +183,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; background: var(--accent); border: 2px solid #04121c; }
 
-/* ---------------------------------------------------------------- Seitenleiste */
+/* ---------------------------------------------------------------- side panel */
 #panel {
   background: var(--panel); border-left: 1px solid var(--line);
   overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px;
@@ -266,7 +266,7 @@ body:not(.thermal) .thermal-only { display: none; }
 }
 #fatal[hidden], [hidden] { display: none !important; }
 
-/* ---------------------------------------------------------------- schmale Bildschirme */
+/* ---------------------------------------------------------------- narrow screens */
 @media (max-width: 980px) {
   #app { display: block; height: auto; }
   #stage { position: sticky; top: 0; z-index: 2; background: var(--bg); }
@@ -275,7 +275,7 @@ body:not(.thermal) .thermal-only { display: none; }
   .only-narrow { display: grid !important; }
   .brand div { display: none; }
   .scenario select { max-width: none; }
-  /* Ansichtsleiste unter das Bild statt ins Bild */
+  /* view bar below the canvas instead of on top of it */
   #canvasWrap { overflow: visible; background: transparent; box-shadow: none; }
   #sim { border-radius: 10px; box-shadow: 0 0 0 1px var(--line); }
   #viewport { padding-bottom: 54px !important; }

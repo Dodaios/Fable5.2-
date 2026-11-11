@@ -1,5 +1,5 @@
-/* Szenarien: Geometrie, Randbedingungen und Anfangsfelder.
- * Längen in Zellen (ny = Zellen über die Gebietshöhe), Geschwindigkeiten in Einheiten von U0. */
+/* Scenarios: geometry, boundary conditions and initial fields.
+ * Lengths in cells (ny = cells across the domain height), velocities in units of U0. */
 (function () {
   'use strict';
   const NS = (window.NSLab = window.NSLab || {});
@@ -13,14 +13,14 @@
 
   NS.scenarios = [
     {
-      id: 'becken',
-      tips: ["Rühre erst langsam, dann schnell: Schnelle Züge hinterlassen Wirbelpaare, die quer durchs Becken wandern.", "Wechsle rechts die Flüssigkeit auf Honig – die Bewegung stirbt sofort ab. Mit Luft oder Quecksilber lebt sie viel länger.", "Ansicht „Wirbel“: Orange dreht gegen den Uhrzeigersinn, Blau im Uhrzeigersinn."],
-      name: 'Freies Becken',
-      desc: 'Ein ruhendes, geschlossenes Becken. Ziehe mit Maus oder Finger durch die Flüssigkeit und beobachte, wie Wirbel entstehen, wandern und durch Reibung zerfallen.',
+      id: 'tank',
+      tips: ["Stir slowly first, then fast: quick strokes leave vortex pairs that travel across the tank.", "Switch the fluid to honey and the motion dies at once. With air or mercury it lives much longer.", "“Vorticity” view: orange spins counter-clockwise, blue clockwise."],
+      name: 'Open tank',
+      desc: 'A closed tank of fluid at rest. Drag through it with your mouse or finger and watch vortices form, travel and decay through friction.',
       kind: 'stir', aspect: 2,
       bc: [BC.NOSLIP, BC.NOSLIP, BC.NOSLIP, BC.NOSLIP],
-      refLen: 1, refName: 'Beckenhöhe H',
-      defaults: { fluid: 'wasser', L: 0.1, view: 0, tool: 'stir', particles: true, speed: 'realtime' },
+      refLen: 1, refName: 'tank height H',
+      defaults: { fluid: 'water', L: 0.1, view: 0, tool: 'stir', particles: true, speed: 'realtime' },
       setup(sol, nx, ny) {
         const a = 0.085 * ny, G = 0.42 * a;
         sol.initVelocity({ vort: [[0.30 * nx, 0.5 * ny + 0.9 * a, G, a], [0.30 * nx, 0.5 * ny - 0.9 * a, -G, a]] });
@@ -37,18 +37,18 @@
     },
     {
       id: 'karman',
-      tips: ["Stelle Re = 20 ein: Der Nachlauf bleibt ruhig. Ab Re ≈ 47 beginnt er zu schwingen.", "Vergleiche die gemessene Strouhal-Zahl (Messwerte) bei Re = 100 und Re = 200.", "Zeichne mit „Wand“ ein zweites Hindernis in den Nachlauf oder rühre in die Anströmung."],
-      name: 'Kármánsche Wirbelstraße',
-      desc: 'Gleichmäßige Anströmung eines Zylinders. Ab Re ≈ 47 lösen sich abwechselnd Wirbel ab; die Ablösefrequenz f folgt der Strouhal-Zahl St = f·D/U ≈ 0,2.',
+      tips: ["Set Re = 20: the wake stays steady. From Re ≈ 47 it starts to oscillate.", "Compare the measured Strouhal number (Measurements) at Re = 100 and Re = 200.", "Use “Wall” to draw a second obstacle into the wake, or stir the incoming flow."],
+      name: 'Kármán vortex street',
+      desc: 'Uniform flow past a cylinder. Above Re ≈ 47 vortices shed alternately; the shedding frequency f follows the Strouhal number St = f·D/U ≈ 0.2.',
       kind: 'driven', aspect: 3,
       bc: [BC.INFLOW, BC.OUTFLOW, BC.SLIP, BC.SLIP],
       inflow: [0, 1, 0.5, 0.1], uc: 1, ubound: 2.2,
-      refLen: 1 / 8, refName: 'Zylinderdurchmesser D',
+      refLen: 1 / 8, refName: 'cylinder diameter D',
       body: { D: 1 / 8 },
       inDye: [10, 0.5, 0, 0], inColA: COL.cyan, inColB: COL.orange,
-      defaults: { fluid: 'wasser', L: 0.08, U: 0.015, view: 0, tool: 'stir', particles: false, speed: 'auto' },
+      defaults: { fluid: 'water', L: 0.08, U: 0.015, view: 0, tool: 'stir', particles: false, speed: 'auto' },
       setup(sol, nx, ny) {
-        // kleine Störung im Nachlauf, damit die Wirbelablösung nicht erst aus Rundungsrauschen anwachsen muss
+        // small perturbation in the wake so that vortex shedding does not have to grow out of round-off noise
         const a = ny / 16;
         sol.initVelocity({ mode: 1, vort: [[0.75 * ny + 2.5 * a, 0.5 * ny + 0.4 * a, 0.3 * a, a]] });
         sol.initScalars({ dyeMode: 6 });
@@ -56,17 +56,17 @@
       },
     },
     {
-      id: 'fluegel',
-      tips: ["Die Messwerte zeigen Auftrieb c_A und Widerstand c_W der Platte.", "Erhöhe die Reynolds-Zahl: Die Strömung auf der Oberseite löst ab, Wirbel schwimmen davon, der Auftrieb schwankt.", "Radiere die Platte weg und zeichne ein eigenes Profil."],
-      name: 'Angestellte Platte (Tragflügel)',
-      desc: 'Eine schlanke Ellipse mit Anstellwinkel. Die Umströmung erzeugt Auftrieb (c_A) und Widerstand (c_W); bei großem Winkel reißt die Strömung ab.',
+      id: 'plate',
+      tips: ["The measurements show the lift c_L and drag c_D of the plate.", "Raise the Reynolds number: the flow separates on the upper side, vortices drift away and the lift fluctuates.", "Erase the plate and draw your own profile."],
+      name: 'Inclined plate (airfoil)',
+      desc: 'A slender ellipse at an angle of attack. The flow around it produces lift (c_L) and drag (c_D); at large angles the flow stalls.',
       kind: 'driven', aspect: 3,
       bc: [BC.INFLOW, BC.OUTFLOW, BC.SLIP, BC.SLIP],
       inflow: [0, 1, 0.5, 0.1], uc: 1, ubound: 2.2,
-      refLen: 0.3, refName: 'Profiltiefe c',
+      refLen: 0.3, refName: 'chord length c',
       body: { D: 0.3 },
       inDye: [14, 0.5, 0, 0], inColA: COL.cyan, inColB: COL.magenta,
-      defaults: { fluid: 'luft', L: 0.2, U: 0.25, view: 0, tool: 'stir', particles: false, speed: 'auto' },
+      defaults: { fluid: 'air', L: 0.2, U: 0.25, view: 0, tool: 'stir', particles: false, speed: 'auto' },
       setup(sol, nx, ny) {
         sol.initVelocity({ mode: 1 });
         sol.initScalars({ dyeMode: 6 });
@@ -74,15 +74,15 @@
       },
     },
     {
-      id: 'kavitaet',
-      tips: ["Probiere Re = 100, 1000 und 5000: Der Hauptwirbel wandert zur Mitte, in den Ecken wachsen Gegenwirbel.", "Bei Re = 10 (z. B. Glycerin) ist das Bild fast spiegelsymmetrisch – Trägheit spielt keine Rolle."],
-      name: 'Deckelgetriebene Kavität',
-      desc: 'Der Deckel eines quadratischen Kastens gleitet nach rechts und schleppt die Flüssigkeit mit. Klassischer Prüfstein für Strömungslöser (Ghia et al. 1982).',
+      id: 'cavity',
+      tips: ["Try Re = 100, 1000 and 5000: the main vortex moves towards the centre and counter-rotating vortices grow in the corners.", "At Re = 10 (e.g. glycerin) the picture is almost mirror-symmetric, because inertia plays no role."],
+      name: 'Lid-driven cavity',
+      desc: 'The lid of a square box slides to the right and drags the fluid along. A classic benchmark for flow solvers (Ghia et al. 1982).',
       kind: 'driven', aspect: 1,
       bc: [BC.NOSLIP, BC.NOSLIP, BC.NOSLIP, BC.NOSLIP],
       wallU: [0, 1], ubound: 1.3,
-      refLen: 1, refName: 'Kantenlänge L',
-      defaults: { fluid: 'wasser', L: 0.05, U: 0.02, view: 0, tool: 'stir', particles: true, speed: 'auto' },
+      refLen: 1, refName: 'edge length L',
+      defaults: { fluid: 'water', L: 0.05, U: 0.02, view: 0, tool: 'stir', particles: true, speed: 'auto' },
       setup(sol, nx, ny) {
         sol.initVelocity({ mode: 0 });
         sol.initScalars({ dyeMode: 5, dyeP: [6, 0, 0, 0], colA: COL.blue, colB: [0.9, 0.5, 0.1] });
@@ -91,14 +91,14 @@
     },
     {
       id: 'kh',
-      tips: ["Aus der glatten Grenzfläche wachsen Wellen, rollen sich zu Wirbeln auf und verschmelzen paarweise.", "Wähle eine zähere Flüssigkeit (Olivenöl, Glycerin): Reibung verbreitert die Scherschicht und dämpft die Instabilität."],
-      name: 'Kelvin-Helmholtz-Instabilität',
-      desc: 'Zwei Schichten strömen gegeneinander. Die Scherschicht ist instabil und rollt sich zu Wirbeln auf – wie bei Wolkenwalzen oder Wellen im Wind.',
+      tips: ["Waves grow out of the smooth interface, roll up into vortices and merge in pairs.", "Pick a more viscous fluid (olive oil, glycerin): friction widens the shear layer and damps the instability."],
+      name: 'Kelvin–Helmholtz instability',
+      desc: 'Two layers flow in opposite directions. The shear layer is unstable and rolls up into vortices, as in billow clouds or wind-driven waves.',
       kind: 'driven', aspect: 2,
       bc: [BC.PERIODIC, BC.PERIODIC, BC.SLIP, BC.SLIP],
       ubound: 1.2,
-      refLen: 1, refName: 'Gebietshöhe H',
-      defaults: { fluid: 'wasser', L: 0.1, U: 0.1, view: 0, tool: 'stir', particles: false, speed: 'auto' },
+      refLen: 1, refName: 'domain height H',
+      defaults: { fluid: 'water', L: 0.1, U: 0.1, view: 0, tool: 'stir', particles: false, speed: 'auto' },
       setup(sol, nx, ny) {
         sol.initVelocity({ mode: 3, p0: [0.5, 1 / 40, 0.5, 0.02], p1: [5, 0.07, 0, 0] });
         sol.initScalars({ dyeMode: 1, dyeP: [0.5, 0, 0, 0], colA: COL.cyan, colB: COL.magenta });
@@ -106,16 +106,16 @@
       },
     },
     {
-      id: 'strahl',
-      tips: ["Der Strahlkopf rollt sich zu einem Wirbelpaar (Pilzform) auf.", "Bei Re = 100 bleibt der Strahl glatt, bei Re = 1000 und mehr beginnt er zu flattern.", "Stelle ein Hindernis („Wand“) in den Strahl."],
-      name: 'Freistrahl',
-      desc: 'Aus einer Düse links tritt ein Strahl in ruhende Flüssigkeit. Sein Kopf rollt sich zu einem Wirbelpaar auf; bei höherer Reynolds-Zahl wird der Strahl instabil.',
+      id: 'jet',
+      tips: ["The head of the jet rolls up into a vortex pair (mushroom shape).", "At Re = 100 the jet stays smooth; at Re = 1000 and above it starts to flap.", "Put an obstacle (“Wall”) into the jet."],
+      name: 'Jet',
+      desc: 'A jet enters fluid at rest from a nozzle on the left. Its head rolls up into a vortex pair; at higher Reynolds numbers the jet becomes unstable.',
       kind: 'driven', aspect: 2,
       bc: [BC.INFLOW, BC.OUTFLOW, BC.NOSLIP, BC.NOSLIP],
       inflow: [2, 1, 0.5, 0.045], uc: 0.25, ubound: 1.5,
-      refLen: 0.09, refName: 'Düsenbreite d',
+      refLen: 0.09, refName: 'nozzle width d',
       inDye: [0, 0.5, 0, 1], inColA: COL.gold, inColB: COL.gold,
-      defaults: { fluid: 'wasser', L: 0.1, U: 0.05, view: 0, tool: 'stir', particles: true, speed: 'auto' },
+      defaults: { fluid: 'water', L: 0.1, U: 0.05, view: 0, tool: 'stir', particles: true, speed: 'auto' },
       setup(sol, nx, ny) {
         const k = 2 * Math.PI / ny;
         sol.initVelocity({ mode: 0, noise: [[3 * k, 2 * k, 0.02, 1.1], [5 * k, 3 * k, 0.012, 2.3], [2 * k, 5 * k, 0.012, 4.2]] });
@@ -125,14 +125,14 @@
     },
     {
       id: 'benard',
-      tips: ["Senke ΔT oder die Schichthöhe, bis Ra < 1708: Die Konvektion schläft ein, es bleibt reine Wärmeleitung.", "Mit „Heizen“ und „Kühlen“ löst du selbst Wärmefahnen aus.", "Luft (Pr ≈ 0,7) und Glycerin (Pr ≈ 12 000) konvektieren bei gleicher Rayleigh-Zahl sehr verschieden."],
-      name: 'Rayleigh-Bénard-Konvektion',
-      desc: 'Unten geheizt, oben gekühlt: Oberhalb der kritischen Rayleigh-Zahl Ra ≈ 1708 setzt Konvektion ein – warme Flüssigkeit steigt in Fahnen auf, kalte sinkt ab (Boussinesq-Näherung).',
+      tips: ["Lower ΔT or the layer height until Ra < 1708: convection dies out and only heat conduction remains.", "Use “Heat” and “Cool” to trigger thermal plumes yourself.", "Air (Pr ≈ 0.7) and glycerin (Pr ≈ 12,000) convect very differently at the same Rayleigh number."],
+      name: 'Rayleigh–Bénard convection',
+      desc: 'Heated from below, cooled from above: beyond the critical Rayleigh number Ra ≈ 1708 convection sets in. Warm fluid rises in plumes and cold fluid sinks (Boussinesq approximation).',
       kind: 'thermal', aspect: 2,
       bc: [BC.PERIODIC, BC.PERIODIC, BC.NOSLIP, BC.NOSLIP],
       tempBC: [1, 0.5, 1, -0.5], ubound: 0.6,
-      refLen: 1, refName: 'Schichthöhe H',
-      defaults: { fluid: 'wasser', L: 0.02, dT: 2, view: 4, tool: 'stir', particles: true, speed: 'auto' },
+      refLen: 1, refName: 'layer height H',
+      defaults: { fluid: 'water', L: 0.02, dT: 2, view: 4, tool: 'stir', particles: true, speed: 'auto' },
       setup(sol, nx, ny) {
         sol.initVelocity({ mode: 0 });
         sol.initScalars({ tMode: 1, tP: [0.5, -0.5, 0.06, 0.5] });
@@ -141,15 +141,15 @@
     },
     {
       id: 'tg',
-      tips: ["Im Diagramm ist die gelbe gestrichelte Kurve die exakte Lösung, die blaue die Simulation.", "„Abweichung von exakter Lösung“ in den Messwerten bleibt im Promillebereich und sinkt mit feinerem Gitter quadratisch.", "Sobald du rührst, gilt die exakte Lösung natürlich nicht mehr."],
-      name: 'Taylor-Green-Wirbel (Validierung)',
-      desc: 'Für dieses Wirbelgitter kennt man die exakte Lösung der Navier-Stokes-Gleichungen: Die Energie klingt mit exp(−4νk²t) ab. Die Messwerte zeigen die Abweichung der Simulation.',
+      tips: ["In the plot the dashed yellow curve is the exact solution and the blue one the simulation.", "“Deviation from exact solution” in the measurements stays in the per-mille range and falls quadratically as the grid is refined.", "As soon as you stir, the exact solution no longer applies."],
+      name: 'Taylor–Green vortex (validation)',
+      desc: 'For this vortex array the exact solution of the Navier–Stokes equations is known: the energy decays as exp(−4νk²t). The measurements show how far the simulation deviates from it.',
       kind: 'driven', aspect: 1,
       bc: [BC.PERIODIC, BC.PERIODIC, BC.PERIODIC, BC.PERIODIC],
       ubound: 2.0,
-      refLen: 1, refName: 'Kantenlänge L',
+      refLen: 1, refName: 'edge length L',
       analytic: { type: 'tg', m: 2 }, explicit: true,
-      defaults: { fluid: 'olivenoel', L: 0.1, U: 0.1, view: 1, tool: 'stir', particles: true, speed: 'auto', scheme: 'central' },
+      defaults: { fluid: 'oliveoil', L: 0.1, U: 0.1, view: 1, tool: 'stir', particles: true, speed: 'auto', scheme: 'central' },
       setup(sol, nx, ny) {
         sol.initVelocity({ mode: 2, p0: [1, 2, 2, 0] });
         sol.initScalars({ dyeMode: 5, dyeP: [8, 0, 0, 0], colA: COL.cyan, colB: COL.magenta });

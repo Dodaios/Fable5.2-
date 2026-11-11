@@ -1,5 +1,5 @@
-/* Rauchtest der Anwendung: jedes Szenario laden, rechnen, auf Stabilität prüfen;
- * zusätzlich Rühren in Wasser / Honig / Luft.   node tests/smoke.js [res] */
+/* Smoke test of the application: load every scenario, advance it, check stability;
+ * plus stirring in several fluids (water, air, oils, glycerin, honey, mercury).   node tests/smoke.js [res] */
 const { chromium } = require('playwright');
 const path = require('path');
 const res = Number(process.argv[2] || 64);
@@ -25,13 +25,13 @@ const res = Number(process.argv[2] || 64);
     }, id);
     const ok = r.valid && r.div < 0.05 && r.umax < 10;
     if (!ok) failed++;
-    console.log(`${ok ? '  ok  ' : 'FEHLER'} ${id.padEnd(10)} ${r.grid.padEnd(8)} Re=${r.Re.toPrecision(3).padEnd(9)} t=${r.t.toPrecision(3)} s  u_max=${r.umax.toFixed(3)}  div=${r.div.toExponential(1)}  ${r.mode}${r.mode === 'rkc' ? '(' + r.s + ')' : ''}`);
+    console.log(`${ok ? '  ok  ' : ' FAIL '} ${id.padEnd(10)} ${r.grid.padEnd(8)} Re=${r.Re.toPrecision(3).padEnd(9)} t=${r.t.toPrecision(3)} s  u_max=${r.umax.toFixed(3)}  div=${r.div.toExponential(1)}  ${r.mode}${r.mode === 'rkc' ? '(' + r.s + ')' : ''}`);
   }
-  // Rühren in verschiedenen Flüssigkeiten (Werkzeug direkt setzen)
-  for (const fluid of ['wasser', 'luft', 'olivenoel', 'glycerin', 'honig', 'quecksilber']) {
+  // stirring in different fluids (set the tool directly)
+  for (const fluid of ['water', 'air', 'oliveoil', 'glycerin', 'honey', 'mercury']) {
     const r = await page.evaluate((fluid) => {
       const a = NSLab.app, sol = a.solver;
-      a.loadScenario('becken', true);
+      a.loadScenario('tank', true);
       const f = NSLab.fluidById(fluid);
       Object.assign(a.state, { fluid, rho: f.rho, mu: f.mu });
       a.paramsChanged();
@@ -55,10 +55,10 @@ const res = Number(process.argv[2] || 64);
     }, fluid);
     const ok = r.valid && r.umax > 0.2 && r.umax < 3 && r.div < 0.05;
     if (!ok) failed++;
-    console.log(`${ok ? '  ok  ' : 'FEHLER'} Rühren in ${fluid.padEnd(12)} Re=${r.Re.toPrecision(3).padEnd(9)} nu_Gitter=${r.nuG.toPrecision(3).padEnd(8)} u_max=${r.umax.toFixed(3)} -> ${r.umax2.toFixed(3)} (nach Loslassen)  div=${r.div.toExponential(1)}  ${JSON.stringify(r.modes)} s=${r.last.s}`);
+    console.log(`${ok ? '  ok  ' : ' FAIL '} stirring in ${fluid.padEnd(12)} Re=${r.Re.toPrecision(3).padEnd(9)} nu_grid=${r.nuG.toPrecision(3).padEnd(8)} u_max=${r.umax.toFixed(3)} -> ${r.umax2.toFixed(3)} (after release)  div=${r.div.toExponential(1)}  ${JSON.stringify(r.modes)} s=${r.last.s}`);
   }
-  if (errors.length) { failed++; console.log('Konsolenfehler:\n' + errors.slice(0, 5).join('\n')); }
-  console.log(failed ? `\n${failed} Prüfung(en) fehlgeschlagen.` : '\nAlle Szenarien stabil.');
+  if (errors.length) { failed++; console.log('Console errors:\n' + errors.slice(0, 5).join('\n')); }
+  console.log(failed ? `\n${failed} check(s) failed.` : '\nAll scenarios stable.');
   await browser.close();
   process.exit(failed ? 1 : 0);
 })();

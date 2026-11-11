@@ -1,11 +1,11 @@
-/* GLSL-Quelltexte des Navier-Stokes-Lösers.
+/* GLSL sources of the Navier-Stokes solver.
  *
- * Gitter: versetztes MAC-Gitter (Harlow & Welch), quadratische Zellen, dx = 1.
- *   u(i,j) liegt auf der linken Zellfläche   (x = i,     y = j+1/2)
- *   v(i,j) liegt auf der unteren Zellfläche  (x = i+1/2, y = j)
- *   p, Farbstoff, Temperatur, Maske: Zellmitte (i+1/2, j+1/2)
- * Die Geschwindigkeitstextur hat (Nx+1) x (Ny+1) Texel, damit auch die
- * Randflächen bei i = Nx bzw. j = Ny gespeichert werden.
+ * Grid: staggered MAC grid (Harlow & Welch), square cells, dx = 1.
+ *   u(i,j) lives on the left cell face    (x = i,     y = j+1/2)
+ *   v(i,j) lives on the bottom cell face  (x = i+1/2, y = j)
+ *   p, dye, temperature, mask: cell centre (i+1/2, j+1/2)
+ * The velocity texture has (Nx+1) x (Ny+1) texels so that the boundary
+ * faces at i = Nx and j = Ny are stored as well.
  */
 (function () {
   'use strict';
@@ -18,16 +18,16 @@ precision highp sampler2D;
 `;
 
   // ---------------------------------------------------------------------------
-  // Randbedingungen und Feldzugriffe (Geisterzellen werden hier erzeugt)
-  // Randtypen: 0 Haftwand, 1 Gleitwand, 2 periodisch, 3 Einstrom (nur links), 4 Ausstrom (nur rechts)
+  // Boundary conditions and field accessors (ghost cells are generated here)
+  // Boundary types: 0 no-slip wall, 1 slip wall, 2 periodic, 3 inflow (left only), 4 outflow (right only)
   // ---------------------------------------------------------------------------
   const COMMON = `
-uniform ivec2 uN;        // Zellen (Nx, Ny)
-uniform ivec4 uBC;       // links, rechts, unten, oben
-uniform vec2 uWallU;     // Tangentialgeschwindigkeit der unteren / oberen Wand
-uniform vec4 uInflow;    // x: Profil (0 gleichförmig, 1 Parabel, 2 Strahl), y: Amplitude, z: Mitte, w: Halbbreite
-uniform vec4 uTempBC;    // unten (Modus, T), oben (Modus, T); Modus 1 = feste Temperatur
-uniform vec4 uInDye;     // x: Streifenzahl am Einstrom (0 = keine), y: Tastgrad, z: Einstromtemperatur, w: 1 = Farbe folgt dem Einstromprofil
+uniform ivec2 uN;        // cells (Nx, Ny)
+uniform ivec4 uBC;       // left, right, bottom, top
+uniform vec2 uWallU;     // tangential velocity of the bottom / top wall
+uniform vec4 uInflow;    // x: profile (0 uniform, 1 parabola, 2 jet), y: amplitude, z: centre, w: half-width
+uniform vec4 uTempBC;    // bottom (mode, T), top (mode, T); mode 1 = fixed temperature
+uniform vec4 uInDye;     // x: number of stripes at the inflow (0 = none), y: duty cycle, z: inflow temperature, w: 1 = dye follows the inflow profile
 uniform vec3 uInColA;
 uniform vec3 uInColB;
 
@@ -53,7 +53,7 @@ vec4 inflowS(float y) {
   return r;
 }
 
-// u auf Fläche (i, j+1/2); gültig i in [0,Nx], j in [0,Ny-1]
+// u on face (i, j+1/2); valid for i in [0,Nx], j in [0,Ny-1]
 float fetchU(sampler2D t, ivec2 c) {
   float s = 1.0, a = 0.0;
   if (c.y < 0) {
@@ -79,7 +79,7 @@ float fetchU(sampler2D t, ivec2 c) {
   return s * texelFetch(t, c, 0).x + a;
 }
 
-// v auf Fläche (i+1/2, j); gültig i in [0,Nx-1], j in [0,Ny]
+// v on face (i+1/2, j); valid for i in [0,Nx-1], j in [0,Ny]
 float fetchV(sampler2D t, ivec2 c) {
   float s = 1.0;
   if (c.x < 0) {
@@ -104,7 +104,7 @@ float fetchV(sampler2D t, ivec2 c) {
   return s * texelFetch(t, c, 0).y;
 }
 
-// zellzentrierte Größe mit Neumann-Rand (Spiegelung) bzw. periodisch: Druck, Maske
+// cell-centred quantity with Neumann boundary (mirroring) or periodic: pressure, mask
 float fetchC(sampler2D t, ivec2 c) {
   if (uBC.x == 2) { if (c.x < 0) c.x += uN.x; else if (c.x >= uN.x) c.x -= uN.x; }
   else c.x = clamp(c.x, 0, uN.x - 1);
@@ -113,7 +113,7 @@ float fetchC(sampler2D t, ivec2 c) {
   return texelFetch(t, c, 0).x;
 }
 
-// Skalare (rgb = Farbstoff, a = Temperatur)
+// scalars (rgb = dye, a = temperature)
 vec4 fetchS(sampler2D t, ivec2 c) {
   vec4 s = vec4(1.0), a = vec4(0.0);
   if (c.y < 0) {
@@ -137,11 +137,11 @@ vec4 fetchS(sampler2D t, ivec2 c) {
 `;
 
   // ---------------------------------------------------------------------------
-  // Werkzeug (Cursor): weiche Kopplung (Brinkman-artig) oder fester Stab
+  // Tool (cursor): soft coupling (Brinkman-like) or rigid rod
   // ---------------------------------------------------------------------------
   const TOOL = `
-uniform vec4 uToolSeg;   // x0, y0, x1, y1 in Gittereinheiten (Wegstück dieses Teilschritts)
-uniform vec4 uToolPar;   // Radius, Kopplungsrate, hart (0/1), aktiv (0/1)
+uniform vec4 uToolSeg;   // x0, y0, x1, y1 in grid units (path segment of this substep)
+uniform vec4 uToolPar;   // radius, coupling rate, hard (0/1), active (0/1)
 float toolDist(vec2 p) {
   vec2 ab = uToolSeg.zw - uToolSeg.xy;
   vec2 d = p - uToolSeg.xy;
@@ -158,10 +158,10 @@ float toolW(vec2 p, float dtEff) {
 `;
 
   // ---------------------------------------------------------------------------
-  // Rechte Seite der Impulsgleichung (ohne Zwangsbedingung)
+  // Right-hand side of the momentum equation (without the constraint)
   //   N(u) = -div(u u) + nu * Laplace(u) - grad(p) + f
-  // Konvektion in Divergenzform; zentrale Mittelung (energieerhaltend) mit
-  // optionaler QUICK-Aufwindkorrektur (gamma in [0,1]).
+  // Advection in divergence form; central averaging (energy conserving) with
+  // optional QUICK upwind correction (gamma in [0,1]).
   // ---------------------------------------------------------------------------
   const RHS_FUNCS = `
 uniform sampler2D uVel;
@@ -169,8 +169,8 @@ uniform sampler2D uPres;
 uniform sampler2D uScal;
 uniform float uNu;
 uniform vec2 uUpw;       // gamma = clamp(uUpw.x + uUpw.y * |a|, 0, 1)
-uniform vec2 uForce;     // homogene Volumenkraft
-uniform vec2 uBuoy;      // Auftriebskoeffizient, Referenztemperatur
+uniform vec2 uForce;     // uniform body force
+uniform vec2 uBuoy;      // buoyancy coefficient, reference temperature
 
 float faceVal(float a, float qmm, float qm, float qp, float qpp) {
   float g = clamp(uUpw.x + uUpw.y * abs(a), 0.0, 1.0);
@@ -216,15 +216,15 @@ float tendV(ivec2 c) {
 `;
 
   // ---------------------------------------------------------------------------
-  // Runge-Kutta-Stufe für die Geschwindigkeit (uMode 0) bzw. reine Tendenz (uMode 1)
-  //   u~ = a * u^n + b * (v + dt * N(v)), danach Festkörper- und Werkzeugzwang
+  // Runge-Kutta stage for the velocity (uMode 0) or tendency only (uMode 1)
+  //   u~ = a * u^n + b * (v + dt * N(v)), followed by solid-body and tool forcing
   // ---------------------------------------------------------------------------
   const RHS = HEAD + COMMON + TOOL + RHS_FUNCS + `
 uniform sampler2D uVel0;
 uniform sampler2D uMask;
 uniform float uDt;
 uniform vec2 uAB;
-uniform float uUc;       // Konvektionsgeschwindigkeit der Ausstrombedingung
+uniform float uUc;       // convection velocity of the outflow condition
 uniform int uMode;
 uniform vec2 uToolVel;
 out vec4 o;
@@ -274,7 +274,7 @@ void main() {
 `;
 
   // ---------------------------------------------------------------------------
-  // Runge-Kutta-Tschebyschow-Stufe 2. Ordnung für steife Viskosität (F(Y) = nu*Laplace(Y) + S):
+  // 2nd-order Runge-Kutta-Chebyshev stage for stiff viscosity (F(Y) = nu*Laplace(Y) + S):
   //   Y_j = c0*Y_0 + c1*Y_{j-1} + c2*Y_{j-2} + c3*dt*F(Y_{j-1}) + c4*dt*F(Y_0)
   // ---------------------------------------------------------------------------
   const RKC = HEAD + COMMON + TOOL + `
@@ -342,8 +342,8 @@ void main() {
 `;
 
   // ---------------------------------------------------------------------------
-  // Skalartransport (Farbstoff rgb, Temperatur a): konservative Flussform,
-  // Aufwindverfahren 3. Ordnung mit Koren-Limiter (TVD, formerhaltend)
+  // Scalar transport (dye rgb, temperature a): conservative flux form,
+  // 3rd-order upwind scheme with Koren limiter (TVD, shape preserving)
   // ---------------------------------------------------------------------------
   const SCALAR = HEAD + COMMON + TOOL + `
 uniform sampler2D uVel;
@@ -351,9 +351,9 @@ uniform sampler2D uScal;
 uniform sampler2D uScal0;
 uniform float uDt;
 uniform vec2 uAB;
-uniform vec4 uDiff;       // Diffusivitäten je Kanal
-uniform vec4 uToolCol;    // Zielwert des Werkzeugs
-uniform vec4 uToolChan;   // betroffene Kanäle (0/1)
+uniform vec4 uDiff;       // diffusivities per channel
+uniform vec4 uToolCol;    // target value of the tool
+uniform vec4 uToolChan;   // affected channels (0/1)
 out vec4 o;
 
 vec4 lim(vec4 a, vec4 b) {
@@ -379,8 +379,8 @@ void main() {
               + uDiff * (qE + qW + qT + qB - 4.0 * qC);
   vec4 q0 = texelFetch(uScal0, c, 0);
   vec4 qn = uAB.x * q0 + uAB.y * (qC + uDt * tend);
-  // Sicherheitsnetz: lokales Maximumprinzip. Bei eingehaltener CFL-Bedingung und divergenzfreiem
-  // Feld erfüllt das Verfahren es von selbst; die Begrenzung greift nur bei Ausreißern.
+  // Safety net: local maximum principle. With the CFL condition met and a divergence-free
+  // field the scheme satisfies it by itself; the clamp only acts on outliers.
   vec4 lo = min(min(min(qC, q0), min(qE, qW)), min(qT, qB));
   vec4 hi = max(max(max(qC, q0), max(qE, qW)), max(qT, qB));
   qn = clamp(qn, lo, hi);
@@ -390,7 +390,7 @@ void main() {
 `;
 
   // ---------------------------------------------------------------------------
-  // Projektion: Divergenz, Massenstromkorrektur am Ausstrom, Gradientenabzug
+  // Projection: divergence, mass-flux correction at the outflow, gradient subtraction
   // ---------------------------------------------------------------------------
   const OUTFLOW = HEAD + COMMON + `
 uniform sampler2D uVel;
@@ -460,7 +460,7 @@ void main() {
 `;
 
   // ---------------------------------------------------------------------------
-  // Geometrisches Mehrgitter für  Laplace(x) = rhs  (Neumann / periodisch)
+  // Geometric multigrid for  Laplace(x) = rhs  (Neumann / periodic)
   // ---------------------------------------------------------------------------
   const MG_COMMON = `
 uniform ivec2 uSize;
@@ -474,9 +474,9 @@ bool nb(inout ivec2 q) {
 }
 `;
 
-  // Ein vollständiger Rot-Schwarz-Gauß-Seidel-Durchlauf in einem einzigen Pass:
-  // rote Zellen aus alten schwarzen Nachbarn, schwarze Zellen aus den dabei neu
-  // berechneten roten Nachbarn (identisch zum sequentiellen Durchlauf).
+  // One complete red-black Gauss-Seidel sweep in a single pass:
+  // red cells from the old black neighbours, black cells from the red neighbours
+  // just recomputed (identical to the sequential sweep).
   const MG_SMOOTH = HEAD + MG_COMMON + `
 uniform sampler2D uX;
 uniform sampler2D uRhs;
@@ -522,7 +522,7 @@ float resid(ivec2 q) {
 }
 `;
 
-  // Residuum bilden und auf das gröbere Gitter mitteln (Ziel: grobes Gitter)
+  // Compute the residual and average it onto the coarser grid (target: coarse grid)
   const MG_RESTRICT = HEAD + MG_COMMON + MG_RESID_FUNC + `
 out vec4 o;
 void main() {
@@ -531,13 +531,13 @@ void main() {
 }
 `;
 
-  // Residuum auf dem feinen Gitter (nur Diagnose)
+  // Residual on the fine grid (diagnostics only)
   const MG_RESIDUAL = HEAD + MG_COMMON + MG_RESID_FUNC + `
 out vec4 o;
 void main() { o = vec4(resid(ivec2(gl_FragCoord.xy)), 0.0, 0.0, 1.0); }
 `;
 
-  // Bilineare Prolongation der Grobgitterkorrektur + Addition (Ziel: feines Gitter)
+  // Bilinear prolongation of the coarse-grid correction + addition (target: fine grid)
   const MG_PROLONG = HEAD + `
 uniform sampler2D uX;
 uniform sampler2D uCoarse;
@@ -560,7 +560,7 @@ void main() {
 }
 `;
 
-  // Exakte Lösung auf dem gröbsten Gitter über die vorab berechnete (Pseudo-)Inverse
+  // Exact solve on the coarsest grid via the precomputed (pseudo-)inverse
   const MG_DIRECT = HEAD + `
 uniform sampler2D uG;
 uniform sampler2D uRhs;
@@ -579,20 +579,20 @@ void main() {
 `;
 
   // ---------------------------------------------------------------------------
-  // Anfangsbedingungen
+  // Initial conditions
   // ---------------------------------------------------------------------------
   const INIT_VEL = HEAD + COMMON + `
-uniform int uMode;        // 0 Ruhe, 1 Einstromprofil überall, 2 Taylor-Green, 3 Scherschicht, 4 Starrkörper-Test
-uniform vec4 uP0;         // modeabhängig
+uniform int uMode;        // 0 at rest, 1 inflow profile everywhere, 2 Taylor-Green, 3 shear layer, 4 rigid-body test
+uniform vec4 uP0;         // mode dependent
 uniform vec4 uP1;
-uniform vec4 uVort[8];    // x, y, Stärke, Radius (Gauß-Stromfunktion)
+uniform vec4 uVort[8];    // x, y, strength, radius (Gaussian stream function)
 uniform int uNVort;
-uniform vec4 uNoise[8];   // kx, ky, Amplitude, Phase (Stromfunktions-Moden)
+uniform vec4 uNoise[8];   // kx, ky, amplitude, phase (stream-function modes)
 uniform int uNNoise;
 out vec4 o;
 const float PI = 3.141592653589793;
 
-float psi(vec2 p) {       // Stromfunktion an Gitterknoten
+float psi(vec2 p) {       // stream function at grid nodes
   float s = 0.0;
   for (int k = 0; k < uNVort; k++) {
     vec2 d = p - uVort[k].xy;
@@ -610,7 +610,7 @@ float psi(vec2 p) {       // Stromfunktion an Gitterknoten
   return s;
 }
 
-vec2 base(vec2 pu, vec2 pv) {   // analytische Grundströmung an u- bzw. v-Position
+vec2 base(vec2 pu, vec2 pv) {   // analytic base flow at the u and v positions
   if (uMode == 1) return vec2(inflowU(pu.y), 0.0);
   if (uMode == 2) {
     float kx = 2.0 * PI * uP0.y / float(uN.x), ky = 2.0 * PI * uP0.z / float(uN.y);
@@ -645,15 +645,15 @@ void main() {
 `;
 
   const INIT_SCAL = HEAD + COMMON + `
-uniform int uDyeMode;     // 0 leer, 1 zwei Schichten, 2 senkrechte Streifen, 3 waagrechte Streifen, 5 Schachbrett, 6 wie Einstrom
-uniform vec4 uDyeP;       // modeabhängig (x: Anzahl / Grenze)
+uniform int uDyeMode;     // 0 empty, 1 two layers, 2 vertical stripes, 3 horizontal stripes, 5 checkerboard, 6 same as inflow
+uniform vec4 uDyeP;       // mode dependent (x: count / interface position)
 uniform vec3 uColA;
 uniform vec3 uColB;
-uniform vec4 uBlob[8];    // x, y, Radius, Farbindex
+uniform vec4 uBlob[8];    // x, y, radius, colour index
 uniform vec3 uBlobCol[8];
 uniform int uNBlob;
-uniform int uTMode;       // 0 konstant, 1 linear unten->oben + Rauschen, 2 zwei Schichten
-uniform vec4 uTP;         // T0, T1, Rauschamplitude, Grenze
+uniform int uTMode;       // 0 constant, 1 linear bottom->top + noise, 2 two layers
+uniform vec4 uTP;         // T0, T1, noise amplitude, interface position
 out vec4 o;
 float hash(vec2 p) {
   p = fract(p * vec2(0.1031, 0.1030));
@@ -691,10 +691,10 @@ void main() {
 }
 `;
 
-  // Festkörpermaske aus analytischen Formen (Volumenanteil ~ clamp(0.5 - sdf))
+  // Solid mask from analytic shapes (volume fraction ~ clamp(0.5 - sdf))
   const INIT_MASK = HEAD + `
-uniform vec4 uShapeA[8];  // Typ (0 Kreis, 1 Rechteck, 2 Ellipse), x, y, Winkel
-uniform vec4 uShapeB[8];  // Halbachsen a, b
+uniform vec4 uShapeA[8];  // type (0 circle, 1 box, 2 ellipse), x, y, angle
+uniform vec4 uShapeB[8];  // semi-axes a, b
 uniform int uNShape;
 out vec4 o;
 void main() {
@@ -715,7 +715,7 @@ void main() {
 }
 `;
 
-  // Maske mit dem Cursor zeichnen / löschen
+  // Draw / erase the mask with the cursor
   const MASK_DRAW = HEAD + TOOL + `
 uniform sampler2D uMask;
 uniform int uErase;
@@ -729,13 +729,13 @@ void main() {
 `;
 
   // ---------------------------------------------------------------------------
-  // Diagnose
+  // Diagnostics
   // ---------------------------------------------------------------------------
   const STATS = HEAD + COMMON + RHS_FUNCS + `
 uniform sampler2D uMask;
-uniform int uWhich;   // 0: Summen A, 1: Maxima B, 2: Summen C (Kräfte), 3: Maxima D
+uniform int uWhich;   // 0: sums A, 1: maxima B, 2: sums C (forces), 3: maxima D
 out vec4 o;
-float vort(ivec2 c) {  // Wirbelstärke am Knoten (i,j)
+float vort(ivec2 c) {  // vorticity at node (i,j)
   return (fetchV(uVel, c) - fetchV(uVel, c + ivec2(-1, 0))) - (fetchU(uVel, c) - fetchU(uVel, c + ivec2(0, -1)));
 }
 void main() {
@@ -755,10 +755,10 @@ void main() {
                max(max(abs(w0), abs(w1)), max(abs(w2), abs(w3))), abs(d));
     }
   } else if (uWhich == 2) {
-    // Kraft auf eingetauchte Körper per Impulsbilanz: Summe von N(u) - grad(p) über alle Flächen,
-    // auf die die Zwangskraft wirkt (chi > 0). In Divergenzform ist das exakt das Oberflächenintegral
-    // von Impulsfluss, Druck und Schubspannung über die Hülle des Körpers.
-    // Zusätzlich der Impuls M in diesem Gebiet: Kraft auf den Körper = Summe(N - grad p) - dM/dt.
+    // Force on immersed bodies from the momentum balance: sum of N(u) - grad(p) over all faces
+    // on which the forcing acts (chi > 0). In divergence form this is exactly the surface integral
+    // of momentum flux, pressure and shear stress over the hull of the body.
+    // In addition the momentum M in this region: force on the body = sum(N - grad p) - dM/dt.
     bool perX = uBC.x == 2, perY = uBC.z == 2;
     float fx = 0.0, fy = 0.0, mx = 0.0, my = 0.0;
     float mc = texelFetch(uMask, c, 0).x;
@@ -780,7 +780,7 @@ void main() {
   const REDUCE = HEAD + `
 uniform sampler2D uSrc;
 uniform ivec2 uSrcSize;
-uniform int uMode;   // 0 Summe, 1 Maximum
+uniform int uMode;   // 0 sum, 1 maximum
 out vec4 o;
 void main() {
   ivec2 c = ivec2(gl_FragCoord.xy) * 8;
@@ -798,7 +798,7 @@ void main() {
 }
 `;
 
-  // Messsonde: lokale Werte an der Cursorposition (2 Texel)
+  // Probe: local values at the cursor position (2 texels)
   const PROBE = HEAD + COMMON + `
 uniform sampler2D uVel;
 uniform sampler2D uPres;

@@ -1,6 +1,6 @@
-/* WebGL2-Hilfsschicht: Programme, Float-Texturen, Offscreen-Ziele.
- * Klassisches Skript (kein ES-Modul), damit die Seite auch per Doppelklick
- * (file://) funktioniert. */
+/* WebGL2 helper layer: programs, float textures, offscreen targets.
+ * Classic script (not an ES module) so the page also works when opened
+ * by double-click (file://). */
 (function () {
   'use strict';
   const NS = (window.NSLab = window.NSLab || {});
@@ -24,7 +24,7 @@ void main() {
           const log = gl.getShaderInfoLog(s);
           const numbered = src.split('\n').map((l, i) => (i + 1) + ': ' + l).join('\n');
           console.error('Shader "' + this.name + '":\n' + log + '\n' + numbered);
-          throw new Error('Shader-Fehler in "' + this.name + '": ' + log);
+          throw new Error('Shader error in "' + this.name + '": ' + log);
         }
         return s;
       };
@@ -33,7 +33,7 @@ void main() {
       gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
       gl.linkProgram(p);
       if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
-        throw new Error('Link-Fehler in "' + this.name + '": ' + gl.getProgramInfoLog(p));
+        throw new Error('Link error in "' + this.name + '": ' + gl.getProgramInfoLog(p));
       }
       this.p = p;
       this.uniforms = {};
@@ -65,11 +65,11 @@ void main() {
           break;
         case gl.INT_VEC2: gl.uniform2i(u.loc, v[0], v[1]); break;
         case gl.INT_VEC4: gl.uniform4i(u.loc, v[0], v[1], v[2], v[3]); break;
-        default: throw new Error('Uniform-Typ nicht unterstützt: ' + u.type);
+        default: throw new Error('Unsupported uniform type: ' + u.type);
       }
     }
 
-    /** Programm aktivieren; `values` setzt Uniforms, Sampler bekommen automatisch Textureinheiten. */
+    /** Activate the program; `values` sets uniforms, samplers are assigned texture units automatically. */
     use(values) {
       const glx = this.glx, gl = glx.gl;
       gl.useProgram(this.p);
@@ -105,14 +105,14 @@ void main() {
         premultipliedAlpha: false, preserveDrawingBuffer: false,
         powerPreference: 'high-performance',
       }, attrs || {}));
-      if (!gl) throw new Error('WebGL2 wird von diesem Browser/Gerät nicht unterstützt.');
+      if (!gl) throw new Error('WebGL2 is not supported by this browser/device.');
       this.gl = gl;
       this.canvas = canvas;
       this.floatExt = gl.getExtension('EXT_color_buffer_float');
       this.halfExt = gl.getExtension('EXT_color_buffer_half_float');
       this.precision = this.floatExt ? 32 : 16;
       if (!this.floatExt && !this.halfExt) {
-        throw new Error('Dieses Gerät kann nicht in Gleitkomma-Texturen rendern (EXT_color_buffer_float fehlt).');
+        throw new Error('This device cannot render to floating-point textures (EXT_color_buffer_float is missing).');
       }
       this.common = {};
       this.commonStamp = 0;
@@ -140,11 +140,11 @@ void main() {
         case 'rg': return [f32 ? gl.RG32F : gl.RG16F, gl.RG, f32 ? gl.FLOAT : gl.HALF_FLOAT];
         case 'rgba': return [f32 ? gl.RGBA32F : gl.RGBA16F, gl.RGBA, f32 ? gl.FLOAT : gl.HALF_FLOAT];
         case 'r8': return [gl.R8, gl.RED, gl.UNSIGNED_BYTE];
-        default: throw new Error('Unbekanntes Texturformat ' + kind);
+        default: throw new Error('Unknown texture format ' + kind);
       }
     }
 
-    /** Offscreen-Ziel (Textur + Framebuffer). */
+    /** Offscreen target (texture + framebuffer). */
     target(w, h, kind, filter) {
       const gl = this.gl;
       const [ifmt, fmt, type] = this._formats(kind);
@@ -160,13 +160,13 @@ void main() {
       gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
       const st = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
-      if (st !== gl.FRAMEBUFFER_COMPLETE) throw new Error('Framebuffer unvollständig (' + kind + ', ' + st + ')');
+      if (st !== gl.FRAMEBUFFER_COMPLETE) throw new Error('Framebuffer incomplete (' + kind + ', ' + st + ')');
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
       return { tex, fbo, w, h, kind };
     }
 
-    /** Datentextur (nur lesbar), Float32, ein Kanal. */
+    /** Data texture (read-only), Float32, single channel. */
     dataTexture(w, h, data) {
       const gl = this.gl;
       const tex = gl.createTexture();
@@ -179,7 +179,7 @@ void main() {
       return { tex, w, h };
     }
 
-    /** Float32-Daten in ein Ziel hochladen (Tests / Anfangsdaten). */
+    /** Upload Float32 data into a target (tests / initial data). */
     upload(target, data) {
       const gl = this.gl;
       const fmt = this._formats(target.kind)[1];
@@ -194,7 +194,7 @@ void main() {
       if (t.tex) gl.deleteTexture(t.tex);
     }
 
-    /** Vollbild-Dreieck in ein Ziel zeichnen (null = Canvas). */
+    /** Draw a fullscreen triangle into a target (null = canvas). */
     draw(target) {
       const gl = this.gl;
       if (target) {
@@ -215,7 +215,7 @@ void main() {
       gl.clear(gl.COLOR_BUFFER_BIT);
     }
 
-    /** Synchrones Auslesen (nur für Tests/Export – blockiert die GPU-Pipeline). */
+    /** Synchronous readback (tests/export only – stalls the GPU pipeline). */
     read(target, x, y, w, h) {
       const gl = this.gl;
       x = x || 0; y = y || 0; w = w || target.w; h = h || target.h;

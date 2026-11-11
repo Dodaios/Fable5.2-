@@ -1,14 +1,14 @@
 {
-  "name": "stroemungslabor",
+  "name": "flow-lab",
   "version": "1.0.0",
-  "description": "Interaktive Navier-Stokes-Simulation im Browser (WebGL2) mit Validierungstests",
+  "description": "Interactive Navier-Stokes simulation in the browser (WebGL2) with validation tests",
   "private": true,
   "license": "MIT",
   "scripts": {
     "start": "python3 -m http.server 8080",
     "test": "node tests/validate.js",
-    "test:kavitaet": "node tests/cavity.js 100 64",
-    "test:zylinder": "node tests/cylinder.js 80 130"
+    "test:cavity": "node tests/cavity.js 100 64",
+    "test:cylinder": "node tests/cylinder.js 80 130"
   },
   "devDependencies": {
     "playwright": "^1.50.0"

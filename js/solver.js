@@ -1,20 +1,21 @@
-/* Inkompressibler Navier-Stokes-Löser (2D) auf der GPU.
+/* Incompressible Navier-Stokes solver (2D) on the GPU.
  *
  *   du/dt + div(u u) = -grad(p) + nu * Laplace(u) + f,     div(u) = 0
- *   dc/dt + div(u c) = D * Laplace(c)                      (Farbstoff, Temperatur)
+ *   dc/dt + div(u c) = D * Laplace(c)                      (dye, temperature)
  *
- * Diskretisierung
- *   Raum:   versetztes MAC-Gitter, finite Volumen 2. Ordnung; Konvektion zentral
- *           (kinetische Energie erhaltend) mit optionaler QUICK-Aufwindkorrektur.
- *   Zeit:   SSP-Runge-Kutta 3. Ordnung, Projektion in jeder Stufe (inkrementelle
- *           Druckform). Bei steifer Viskosität (zähe Fluide): Druckkorrektur-
- *           verfahren mit Runge-Kutta-Tschebyschow-Stufen 2. Ordnung für den Reibungsterm.
- *   Druck:  Poisson-Gleichung per geometrischem Mehrgitter (Rot-Schwarz-Gauß-
- *           Seidel, exakte Lösung auf dem gröbsten Gitter).
- *   Körper: eingetauchte Ränder mit direkter Zwangskraft (Volumenanteil-Maske).
+ * Discretisation
+ *   Space:    staggered MAC grid, 2nd-order finite volumes; central advection
+ *             (kinetic-energy conserving) with optional QUICK upwind correction.
+ *   Time:     3rd-order SSP Runge-Kutta, projection in every stage (incremental
+ *             pressure form). For stiff viscosity (viscous fluids): pressure-
+ *             correction scheme with 2nd-order Runge-Kutta-Chebyshev stages for
+ *             the viscous term.
+ *   Pressure: Poisson equation by geometric multigrid (red-black Gauss-Seidel,
+ *             exact solve on the coarsest grid).
+ *   Bodies:   immersed boundaries with direct forcing (volume-fraction mask).
  *
- * Alle Größen in Gittereinheiten: dx = 1, Geschwindigkeit in Einheiten von U0,
- * Zeit in dx/U0, nu = 1/Re_Zelle. Die Umrechnung in SI erfolgt in app.js.
+ * All quantities in grid units: dx = 1, velocity in units of U0,
+ * time in dx/U0, nu = 1/Re_cell. Conversion to SI happens in app.js.
  */
 (function () {
   'use strict';
@@ -23,13 +24,13 @@
 
   const BC = { NOSLIP: 0, SLIP: 1, PERIODIC: 2, INFLOW: 3, OUTFLOW: 4 };
 
-  // Stabilitätsgrenze für explizite Diffusion (nu * dt); RK3 verträgt bis ~0.31 allein,
-  // zusammen mit Konvektion bei CFL <= 1 bleibt 0.15 sicher im Stabilitätsgebiet.
+  // Stability limit for explicit diffusion (nu * dt); RK3 alone tolerates up to ~0.31,
+  // combined with advection at CFL <= 1 the value 0.15 stays safely inside the stability region.
   const NU_DT_EXPLICIT = 0.15;
-  const RKC_EPS = 4;         // Dämpfung der Tschebyschow-Stufen (steife Moden: |P| <~ 0,45)
+  const RKC_EPS = 4;         // damping of the Chebyshev stages (stiff modes: |P| <~ 0.45)
   const RKC_SMAX = 240;
 
-  /** Gauß-Jordan-Inversion einer dichten n x n-Matrix (Float64Array, zeilenweise). */
+  /** Gauss-Jordan inversion of a dense n x n matrix (Float64Array, row-major). */
   function invertDense(A, n) {
     const M = new Float64Array(A);
     const I = new Float64Array(n * n);
@@ -40,7 +41,7 @@
         const v = Math.abs(M[r * n + c]);
         if (v > best) { best = v; piv = r; }
       }
-      if (best < 1e-14) throw new Error('Grobgittermatrix singulär');
+      if (best < 1e-14) throw new Error('Coarse-grid matrix is singular');
       if (piv !== c) {
         for (let k = 0; k < n; k++) {
           let t = M[c * n + k]; M[c * n + k] = M[piv * n + k]; M[piv * n + k] = t;
@@ -60,7 +61,7 @@
     return I;
   }
 
-  /** (Pseudo-)Inverse des 5-Punkt-Laplace-Operators auf dem gröbsten Gitter. */
+  /** (Pseudo-)inverse of the 5-point Laplace operator on the coarsest grid. */
   function coarseInverse(w, h, perX, perY, h2) {
     const n = w * h;
     const A = new Float64Array(n * n);
@@ -79,17 +80,17 @@
         A[r * n + r] -= cnt / h2;
       }
     }
-    // Nullraum (Konstante) regularisieren: wirkt auf mittelwertfreie rechte Seiten als Pseudoinverse
+    // regularise the null space (constant): acts as the pseudo-inverse on zero-mean right-hand sides
     const reg = 1 / (h2 * n);
     for (let k = 0; k < n * n; k++) A[k] -= reg;
     return new Float32Array(invertDense(A, n));
   }
 
-  /** Koeffizienten des gedämpften Runge-Kutta-Tschebyschow-Verfahrens 2. Ordnung
-   *  (Sommeijer, Shampine & Verwer 1998), s >= 2 Stufen:
+  /** Coefficients of the damped 2nd-order Runge-Kutta-Chebyshev method
+   *  (Sommeijer, Shampine & Verwer 1998), s >= 2 stages:
    *    Y_1 = Y_0 + mt_1 dt F_0
    *    Y_j = (1 - mu_j - nu_j) Y_0 + mu_j Y_{j-1} + nu_j Y_{j-2} + mt_j dt F_{j-1} + gt_j dt F_0
-   *  Stabilitätsintervall [-beta, 0] mit beta = (1 + w0) / w1. */
+   *  Stability interval [-beta, 0] with beta = (1 + w0) / w1. */
   function rkcCoeffs(s, eps) {
     const w0 = 1 + eps / (s * s);
     const T = [1, w0], dT = [0, 1], ddT = [0, 0];
@@ -103,7 +104,7 @@
     for (let j = 2; j <= s; j++) b.push(ddT[j] / (dT[j] * dT[j]));
     b[0] = b[1] = b[2];
     const a = b.map((bj, j) => 1 - bj * T[j]);
-    // Stufen als (c0, c1, c2, c3, c4) für  c0*Y0 + c1*Y_{j-1} + c2*Y_{j-2} + c3*dt*F_{j-1} + c4*dt*F_0
+    // stages as (c0, c1, c2, c3, c4) for  c0*Y0 + c1*Y_{j-1} + c2*Y_{j-2} + c3*dt*F_{j-1} + c4*dt*F_0
     const st = [{ c0: 1, c1: 0, c2: 0, c3: 0, c4: b[1] * w1 }];
     for (let j = 2; j <= s; j++) {
       const mu = 2 * b[j] * w0 / b[j - 1], nu = -b[j] / b[j - 2], mt = 2 * b[j] * w1 / b[j - 1];
@@ -112,7 +113,7 @@
     return { stages: st, beta: (1 + w0) / w1 };
   }
 
-  /** kleinste Stufenzahl (>= 2) mit Stabilitätsintervall >= z */
+  /** smallest number of stages (>= 2) with stability interval >= z */
   function rkcStageCount(z, eps) {
     let s = Math.max(2, Math.floor(Math.sqrt(z / 0.7)));
     while (s < 4000 && 0.92 * rkcCoeffs(s, eps).beta < z) s++;
@@ -135,19 +136,19 @@
         stats: P(S.STATS, 'stats'), reduce: P(S.REDUCE, 'reduce'), probe: P(S.PROBE, 'probe'),
       };
       this.params = {
-        nu: 0.01,            // kinematische Viskosität in Gittereinheiten (= 1/Re_Zelle)
-        upw: [0, 0],         // Aufwindanteil: gamma = clamp(upw0 + upw1*|a|, 0, 1)
-        force: [0, 0],       // homogene Volumenkraft
-        buoy: [0, 0],        // Auftrieb: Koeffizient, Referenztemperatur
-        diff: [0, 0, 0, 0],  // Diffusivitäten (Farbstoff r,g,b; Temperatur)
-        cycles: 2,           // Mehrgitter-V-Zyklen je Projektion
+        nu: 0.01,            // kinematic viscosity in grid units (= 1/Re_cell)
+        upw: [0, 0],         // upwind fraction: gamma = clamp(upw0 + upw1*|a|, 0, 1)
+        force: [0, 0],       // uniform body force
+        buoy: [0, 0],        // buoyancy: coefficient, reference temperature
+        diff: [0, 0, 0, 0],  // diffusivities (dye r,g,b; temperature)
+        cycles: 2,           // multigrid V-cycles per projection
         cfl: 0.75,
-        uc: 1,               // Konvektionsgeschwindigkeit am Ausstrom
-        forceStiff: 0,       // nur für Tests: 1 = immer RK3, 2 = immer RKC
+        uc: 1,               // convection velocity at the outflow
+        forceStiff: 0,       // tests only: 1 = always RK3, 2 = always RKC
       };
       this.tool = {
         seg: [0, 0, 0, 0], vel: [0, 0],
-        velPar: [8, 2, 0, 0],      // Radius, Rate, hart, aktiv
+        velPar: [8, 2, 0, 0],      // radius, rate, hard, active
         scalPar: [8, 4, 0, 0],
         col: [1, 1, 1, 0], chan: [1, 1, 1, 0],
       };
@@ -179,15 +180,15 @@
       if (this._sync) { this.glx.gl.deleteSync(this._sync); this._sync = null; }
     }
 
-    /** Gitter und Randbedingungen festlegen (alle Felder werden neu angelegt). */
+    /** Set grid and boundary conditions (all fields are re-allocated). */
     configure(cfg) {
       this.dispose();
       const nx = cfg.nx, ny = cfg.ny;
       const bc = cfg.bc.slice();
       if ((bc[0] === BC.PERIODIC) !== (bc[1] === BC.PERIODIC) || (bc[2] === BC.PERIODIC) !== (bc[3] === BC.PERIODIC)) {
-        throw new Error('Periodische Ränder müssen paarweise gesetzt sein.');
+        throw new Error('Periodic boundaries must be set in pairs.');
       }
-      if ((bc[0] === BC.INFLOW) !== (bc[1] === BC.OUTFLOW)) throw new Error('Einstrom (links) braucht Ausstrom (rechts).');
+      if ((bc[0] === BC.INFLOW) !== (bc[1] === BC.OUTFLOW)) throw new Error('Inflow (left) requires outflow (right).');
       this.nx = nx; this.ny = ny; this.bc = bc;
       this.perX = bc[0] === BC.PERIODIC; this.perY = bc[2] === BC.PERIODIC;
       this.hasOutflow = bc[1] === BC.OUTFLOW;
@@ -203,7 +204,7 @@
       this.corr = this._t(1, 1, 'rgba');
       this.probeT = this._t(2, 1, 'rgba');
 
-      // Mehrgitter-Hierarchie
+      // multigrid hierarchy
       this.mg = [];
       let w = nx, h = ny, l = 0;
       for (;;) {
@@ -217,7 +218,7 @@
       if (n <= 800) last.G = this.glx.dataTexture(n, n, coarseInverse(last.w, last.h, this.perX, this.perY, last.h2));
       else last.iter = 80;
 
-      // Diagnose-Reduktion
+      // diagnostics reduction
       this.statFull = this._t(nx, ny, 'rgba');
       this.statMid = [];
       w = nx; h = ny;
@@ -231,7 +232,7 @@
       this.time = 0; this.steps = 0; this.pShift = 0;
     }
 
-    /** Randdaten, die ohne Neuaufbau geändert werden dürfen. */
+    /** Boundary data that may be changed without a rebuild. */
     setBoundaryData(d) {
       const c = {};
       if (d.wallU) c.uWallU = this.wallU = d.wallU.slice();
@@ -247,7 +248,7 @@
       this.glx.setCommon(c);
     }
 
-    // ----------------------------------------------------------------- Anfangsfelder
+    // ----------------------------------------------------------------- initial fields
     initVelocity(spec) {
       spec = spec || {};
       const vort = new Float32Array(32), noise = new Float32Array(32);
@@ -277,7 +278,7 @@
       this.glx.draw(this.s);
     }
 
-    /** shapes: [{type:'circle'|'box'|'ellipse', x, y, a, b, angle}] in Gittereinheiten */
+    /** shapes: [{type:'circle'|'box'|'ellipse', x, y, a, b, angle}] in grid units */
     initMask(shapes) {
       shapes = (shapes || []).slice(0, 8);
       const A = new Float32Array(32), B = new Float32Array(32);
@@ -296,7 +297,7 @@
       const t = this.mask; this.mask = this.maskB; this.maskB = t;
     }
 
-    // ----------------------------------------------------------------- Mehrgitter
+    // ----------------------------------------------------------------- multigrid
     _smooth(L, zero) {
       this.prog.smooth.use({
         uX: L.x, uRhs: L.rhs, uSize: [L.w, L.h], uPer: [this.perX ? 1 : 0, this.perY ? 1 : 0],
@@ -329,13 +330,13 @@
       this._smooth(L, false);
     }
 
-    /** Löst Laplace(x) = mg[0].rhs; Ergebnis in mg[0].x. */
+    /** Solves Laplace(x) = mg[0].rhs; result in mg[0].x. */
     solvePoisson(cycles, continueFromCurrent) {
       for (let k = 0; k < cycles; k++) this._vcycle(0, k === 0 && !continueFromCurrent);
       return this.mg[0].x;
     }
 
-    /** Projektion auf das divergenzfreie Feld: velOut = velIn - grad(psi), Laplace(psi) = div(velIn). */
+    /** Projection onto the divergence-free field: velOut = velIn - grad(psi), Laplace(psi) = div(velIn). */
     _project(velIn, velOut, pScale) {
       const pr = this.prog, glx = this.glx;
       if (this.hasOutflow) { pr.outflow.use({ uVel: velIn }); glx.draw(this.corr); }
@@ -352,7 +353,7 @@
       }
     }
 
-    /** Aktuelles Feld divergenzfrei machen (nach Anfangsbedingungen / Geometrieänderung). */
+    /** Make the current field divergence-free (after initial conditions / geometry changes). */
     projectField(cycles) {
       const keep = this.params.cycles;
       this.params.cycles = cycles || 8;
@@ -361,8 +362,8 @@
       const t = this.u; this.u = this.ub; this.ub = t;
     }
 
-    // ----------------------------------------------------------------- Zeitschritt
-    /** Wählt Schrittweite und Verfahren. dtWant: gewünschte Schrittweite, ub: Schranke für |u|+|v|. */
+    // ----------------------------------------------------------------- time step
+    /** Chooses step size and scheme. dtWant: requested step size, ub: bound for |u|+|v|. */
     plan(dtWant, ub) {
       const p = this.params;
       const kap = Math.max(p.diff[0], p.diff[1], p.diff[2], p.diff[3]);
@@ -370,7 +371,7 @@
       if (kap > 0) dt = Math.min(dt, NU_DT_EXPLICIT / kap);
       if (p.forceStiff === 1) return { mode: 'rk3', dt: Math.min(dt, NU_DT_EXPLICIT / Math.max(p.nu, 1e-12)), s: 3 };
       if (p.forceStiff !== 2 && p.nu * dt <= NU_DT_EXPLICIT) return { mode: 'rk3', dt, s: 3 };
-      // steif: Euler-Konvektion ist nur für u^2 dt / nu <= 2 stabil
+      // stiff: Euler advection is stable only for u^2 dt / nu <= 2
       let dtR = Math.min(dt, 1.5 * p.nu / Math.max(ub * ub, 1e-12));
       if (p.forceStiff !== 2 && p.nu * dtR / NU_DT_EXPLICIT < 2.5) return { mode: 'rk3', dt: Math.min(dt, NU_DT_EXPLICIT / p.nu), s: 3 };
       let s = rkcStageCount(8 * p.nu * dtR, RKC_EPS);
@@ -408,7 +409,7 @@
       };
     }
 
-    /** SSP-RK3 (Shu & Osher) mit Projektion in jeder Stufe. */
+    /** SSP-RK3 (Shu & Osher) with a projection in every stage. */
     _stepRK3(dt) {
       const pr = this.prog, glx = this.glx, p = this.params;
       const AB = [[0, 1], [0.75, 0.25], [1 / 3, 2 / 3]];
@@ -428,13 +429,13 @@
       const t = this.s; this.s = this.sa; this.sa = t;
     }
 
-    /** Druckkorrekturschritt mit Runge-Kutta-Tschebyschow-Diffusion (zähe Fluide). */
+    /** Pressure-correction step with Runge-Kutta-Chebyshev diffusion (viscous fluids). */
     _stepRKC(dt, s) {
       const pr = this.prog, glx = this.glx, p = this.params, tl = this.tool;
-      // Tendenz ohne Reibung: S = -div(uu) - grad(p) + f  (Randflächen: (Ziel - u)/dt)
+      // tendency without viscosity: S = -div(uu) - grad(p) + f  (boundary faces: (target - u)/dt)
       pr.rhs.use(this._rhsUniforms(this.u, this.s, dt, 0, 1, 1, 0));
       glx.draw(this.ua);
-      // Skalare: RK3 mit eingefrorener Geschwindigkeit u^n
+      // scalars: RK3 with frozen velocity u^n
       const AB = [[0, 1], [0.75, 0.25], [1 / 3, 2 / 3]];
       const sTargets = [this.sa, this.sb, this.sa];
       let sCur = this.s;
@@ -444,7 +445,7 @@
         sCur = sTargets[k];
       }
       { const t = this.s; this.s = this.sa; this.sa = t; }
-      // Tschebyschow-Stufen: Y_0 = this.u bleibt erhalten, die Stufen rotieren durch drei Texturen
+      // Chebyshev stages: Y_0 = this.u is kept, the stages rotate through three textures
       const co = rkcCoeffs(s, RKC_EPS).stages;
       let y2 = this.u, y1 = this.u;
       const pool = [this.ub, this.uc, this.ud];
@@ -458,11 +459,11 @@
         glx.draw(out);
         y2 = y1; y1 = out;
       }
-      // Projektion; das Ergebnis ersetzt Y_0
+      // projection; the result replaces Y_0
       this._project(y1, this.u, 1 / dt);
     }
 
-    // ----------------------------------------------------------------- Diagnose
+    // ----------------------------------------------------------------- diagnostics
     computeStats(probePos) {
       const pr = this.prog, glx = this.glx, p = this.params;
       for (let which = 0; which < 4; which++) {
@@ -497,7 +498,7 @@
       };
     }
 
-    /** Kraft auf eingetauchte Körper aus zwei aufeinanderfolgenden Messungen (inkl. -dM/dt). */
+    /** Force on immersed bodies from two consecutive measurements (incl. -dM/dt). */
     static bodyForce(cur, prev) {
       if (!prev || !(cur.time > prev.time)) return [cur.fx, cur.fy];
       const dt = cur.time - prev.time;
@@ -512,7 +513,7 @@
       return this._decode(b);
     }
 
-    /** Diagnose berechnen und asynchron (ohne Pipeline-Stau) zurücklesen. */
+    /** Compute diagnostics and read them back asynchronously (without stalling the pipeline). */
     requestStats(probePos) {
       if (this._sync) return false;
       const gl = this.glx.gl;
@@ -548,7 +549,7 @@
       return r;
     }
 
-    /** Residuum der letzten Poisson-Lösung (Diagnose/Test): Float32Array der Zellwerte. */
+    /** Residual of the last Poisson solve (diagnostics/test): Float32Array of cell values. */
     readResidual() {
       const L = this.mg[0];
       this.prog.residual.use({ uX: L.x, uRhs: L.rhs, uSize: [L.w, L.h], uPer: [this.perX ? 1 : 0, this.perY ? 1 : 0], uH2: L.h2 });
@@ -559,7 +560,7 @@
       return out;
     }
 
-    /** Geschwindigkeitsfeld auslesen: {u: (nx+1)*ny, v: nx*(ny+1)} (blockierend; Tests/Export). */
+    /** Read back the velocity field: {u: (nx+1)*ny, v: nx*(ny+1)} (blocking; tests/export). */
     readVelocity() {
       const raw = this.glx.read(this.u);
       const W = this.nx + 1, nx = this.nx, ny = this.ny;
