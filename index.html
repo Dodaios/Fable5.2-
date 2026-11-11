@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Strömungslabor – Navier-Stokes im Browser</title>
+<meta name="description" content="Interaktive, validierte Simulation der inkompressiblen Navier-Stokes-Gleichungen in echten SI-Einheiten: Flüssigkeit wählen, mit dem Cursor rühren, Wirbel beobachten.">
+<meta name="theme-color" content="#0a0d14">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0d14'/%3E%3Cpath d='M5 12c5-6 9 6 14 0s6-3 8 0M5 20c5-6 9 6 14 0s6-3 8 0' fill='none' stroke='%234cc2ff' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <main id="stage">
+    <header id="topbar">
+      <div class="brand">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 12c5-6 9 6 14 0s7-3 10 0M4 21c5-6 9 6 14 0s7-3 10 0" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+        <div><b>Strömungslabor</b><span>Navier-Stokes in Echtzeit</span></div>
+      </div>
+      <label class="scenario">
+        <span class="sr">Szenario</span>
+        <select id="scenario"></select>
+      </label>
+      <div class="transport">
+        <button id="btnPlay" class="icon" title="Pause / Weiter (Leertaste)" aria-label="Pause"></button>
+        <button id="btnStep" class="icon" title="Einzelschritt (.)" aria-label="Einzelschritt">
+          <svg viewBox="0 0 24 24"><path d="M6 5l9 7-9 7zM17 5h2.5v14H17z"/></svg>
+        </button>
+        <button id="btnReset" class="icon" title="Zurücksetzen (R)" aria-label="Zurücksetzen">
+          <svg viewBox="0 0 24 24"><path d="M12 5a7 7 0 1 1-6.6 4.7l1.9.7A5 5 0 1 0 12 7v3L7.5 6 12 2z"/></svg>
+        </button>
+        <button id="btnPanel" class="icon only-narrow" title="Einstellungen" aria-label="Einstellungen">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div id="viewport">
+      <div id="canvasWrap">
+        <canvas id="sim"></canvas>
+        <div id="brush" hidden></div>
+        <div id="hudTop">
+          <div id="hud">
+            <span class="chip" id="hudRe" title="Reynolds-Zahl: Verhältnis von Trägheit zu Reibung"></span>
+            <span class="chip" id="hudT" title="Simulierte physikalische Zeit"></span>
+            <span class="chip" id="hudSpeed" title="Simulationstempo relativ zur Echtzeit"></span>
+          </div>
+          <div id="viewbar">
+            <div class="segmented" id="views" role="radiogroup" aria-label="Ansicht"></div>
+            <div class="segmented">
+              <button class="toggle" id="togParticles" title="Mitbewegte Partikel (P)">Partikel</button>
+              <button class="toggle" id="togArrows" title="Geschwindigkeitspfeile (V)">Pfeile</button>
+            </div>
+          </div>
+        </div>
+        <div id="legend">
+          <span id="legendTitle"></span>
+          <div class="bar"><span id="legendMin"></span><canvas id="legendBar" width="160" height="10"></canvas><span id="legendMax"></span></div>
+        </div>
+        <div id="hint"></div>
+        <div id="toast" hidden></div>
+      </div>
+    </div>
+
+    <footer id="toolbar">
+      <div class="group" id="tools" role="radiogroup" aria-label="Werkzeug"></div>
+      <div class="group grow">
+        <label class="mini">Pinsel
+          <input type="range" id="brushSize" min="0.015" max="0.16" step="0.005">
+        </label>
+        <div id="swatches" class="swatches" aria-label="Farbstofffarbe"></div>
+      </div>
+    </footer>
+  </main>
+
+  <aside id="panel">
+    <section class="card" id="cardScenario">
+      <p id="scenarioDesc" class="desc"></p>
+    </section>
+
+    <section class="card">
+      <h2>Flüssigkeit</h2>
+      <div class="row">
+        <select id="fluid" aria-label="Flüssigkeit"></select>
+      </div>
+      <div class="field">
+        <label for="muSlider">Zähigkeit <i>μ</i> <small>(dynamische Viskosität)</small></label>
+        <div class="inl"><input type="range" id="muSlider" min="-5" max="2" step="0.01"><span class="num"><input type="number" id="muInput" step="any" min="0"><em>mPa·s</em></span></div>
+      </div>
+      <div class="field">
+        <label for="rhoInput">Dichte <i>ρ</i></label>
+        <div class="inl"><input type="range" id="rhoSlider" min="-1" max="4.2" step="0.01"><span class="num"><input type="number" id="rhoInput" step="any" min="0"><em>kg/m³</em></span></div>
+      </div>
+      <div class="field thermal-only">
+        <label>Wärmeausdehnung <i>β</i> · Temperaturleitfähigkeit <i>κ</i></label>
+        <div class="inl two"><span class="num"><input type="number" id="betaInput" step="any" min="0"><em>10⁻⁴/K</em></span><span class="num"><input type="number" id="kappaInput" step="any" min="0"><em>mm²/s</em></span></div>
+      </div>
+      <p class="derived">kinematische Viskosität <i>ν</i> = <i>μ</i>/<i>ρ</i> = <b id="nuOut"></b></p>
+    </section>
+
+    <section class="card">
+      <h2>Maßstab &amp; Antrieb</h2>
+      <div class="field">
+        <label for="lenSlider"><span id="lenLabel">Höhe des Gebiets</span></label>
+        <div class="inl"><input type="range" id="lenSlider" min="-3" max="1" step="0.01"><b class="out" id="lenOut"></b></div>
+      </div>
+      <div class="field" id="fieldU">
+        <label for="uSlider"><span id="uLabel">Geschwindigkeit <i>U</i></span></label>
+        <div class="inl"><input type="range" id="uSlider" min="-4" max="1.3" step="0.01"><b class="out" id="uOut"></b></div>
+      </div>
+      <div class="field thermal-only">
+        <label for="dtSlider">Temperaturdifferenz Δ<i>T</i> (unten − oben)</label>
+        <div class="inl"><input type="range" id="dtSlider" min="-2" max="2" step="0.01"><b class="out" id="dtOut"></b></div>
+      </div>
+      <div class="rebox">
+        <div class="rehead"><span>Reynolds-Zahl</span><b id="reOut"></b></div>
+        <div class="reformula"><i>Re</i> = <i>U</i>·<i>L</i> / <i>ν</i> = <span id="reTerms"></span></div>
+        <div class="rescale"><div id="reMarker"></div></div>
+        <div class="reticks"><span>10⁻²</span><span>1</span><span>10²</span><span>10⁴</span><span>10⁶</span><span>10⁸</span></div>
+        <p id="reRegime" class="regime"></p>
+        <div id="rePresets" class="chips"></div>
+        <p id="extraNumbers" class="derived"></p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Messwerte</h2>
+      <canvas id="plot" width="640" height="200"></canvas>
+      <div id="plotLegend" class="plotlegend"></div>
+      <dl id="readouts" class="readouts"></dl>
+      <div class="row gap">
+        <button id="btnCsv" class="ghost">Zeitreihe als CSV</button>
+        <button id="btnField" class="ghost">Feld als CSV</button>
+        <button id="btnPng" class="ghost">Bild speichern</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Zeit &amp; Numerik</h2>
+      <div class="field">
+        <label for="speed">Tempo</label>
+        <select id="speed">
+          <option value="realtime">Echtzeit (1 s Simulation = 1 s)</option>
+          <option value="auto">Automatisch (flüssige Darstellung)</option>
+          <option value="0.25">Zeitlupe ¼×</option>
+          <option value="0.1">Zeitlupe ⅒×</option>
+          <option value="4">Zeitraffer 4×</option>
+          <option value="20">Zeitraffer 20×</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="res">Gitterauflösung</label>
+        <select id="res">
+          <option value="128">niedrig – 128 Zellen über die Höhe</option>
+          <option value="192">mittel – 192</option>
+          <option value="256">hoch – 256</option>
+          <option value="384">sehr hoch – 384</option>
+          <option value="512">extrem – 512 (starke GPU nötig)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="scheme">Konvektionsschema</label>
+        <select id="scheme">
+          <option value="auto">Automatisch (zentral, lokal QUICK bei Pe<sub>Δ</sub> &gt; 2)</option>
+          <option value="central">Zentral 2. Ordnung (energieerhaltend, DNS)</option>
+          <option value="quick">QUICK (Aufwind 3. Ordnung)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="cycles">Druckprojektion: Mehrgitter-Zyklen je Stufe</label>
+        <div class="inl"><input type="range" id="cycles" min="1" max="6" step="1"><b class="out" id="cyclesOut"></b></div>
+      </div>
+      <p class="derived" id="resInfo"></p>
+    </section>
+
+    <section class="card eq">
+      <h2>Was wird hier gerechnet?</h2>
+      <div class="equation" aria-label="Navier-Stokes-Gleichungen">
+        <span class="t-in"><i>ρ</i>&thinsp;(&part;<b>u</b>/&part;<i>t</i> + (<b>u</b>·∇)<b>u</b>)</span> =
+        <span class="t-p">−∇<i>p</i></span> +
+        <span class="t-v"><i>μ</i>&thinsp;∇²<b>u</b></span> +
+        <span class="t-f"><b>f</b></span>
+        <br><span class="t-c">∇·<b>u</b> = 0</span>
+      </div>
+      <ul class="terms">
+        <li><span class="dot t-in"></span><b>Trägheit:</b> Masse mal Beschleunigung eines Flüssigkeitsteilchens – auch dadurch, dass es von der Strömung an einen Ort mit anderer Geschwindigkeit getragen wird.</li>
+        <li><span class="dot t-p"></span><b>Druck:</b> Flüssigkeit wird von hohem zu niedrigem Druck geschoben. Der Druck stellt sich genau so ein, dass nirgends Flüssigkeit zusammengedrückt wird.</li>
+        <li><span class="dot t-v"></span><b>Reibung:</b> Zähigkeit gleicht Geschwindigkeitsunterschiede aus – Honig stark, Wasser schwach.</li>
+        <li><span class="dot t-f"></span><b>Äußere Kräfte:</b> dein Rührstab, Auftrieb durch Temperaturunterschiede.</li>
+        <li><span class="dot t-c"></span><b>Inkompressibilität:</b> Was in ein Volumen hineinfließt, fließt auch wieder heraus.</li>
+      </ul>
+      <p class="small">Gelöst wird direkt auf der Grafikkarte: versetztes Gitter (finite Volumen, 2.&nbsp;Ordnung), Runge-Kutta 3.&nbsp;Ordnung, Druck über ein Mehrgitterverfahren. Es gibt keine künstliche Zähigkeit – die Reibung im Bild ist die echte Viskosität der gewählten Flüssigkeit, solange die Anzeige „aufgelöst“ meldet. Die Strömung ist zweidimensional (wie in einem dünnen Film oder Seifenfilm); echte Turbulenz ist dreidimensional.</p>
+      <p class="small"><a href="README.md" id="lnkReadme">Verfahren und Validierung im Detail</a> · Tasten: Leertaste Pause · R Reset · 1–5 Ansicht · P Partikel · V Pfeile</p>
+    </section>
+  </aside>
+</div>
+<div id="fatal" hidden></div>
+<script src="js/gl.js"></script>
+<script src="js/shaders.js"></script>
+<script src="js/solver.js"></script>
+<script src="js/render.js"></script>
+<script src="js/fluids.js"></script>
+<script src="js/scenarios.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
