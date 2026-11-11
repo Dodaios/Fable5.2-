@@ -82,7 +82,7 @@ siehe unten). Stand der Ergebnisse (Software-Rendering SwiftShader, 32-Bit-Gleit
 | Poiseuille-Strömung | stationäres Parabelprofil, explizit und im steifen Modus (ν bis 200) | Fehler = h² (0,39 % bei 16, 0,098 % bei 32 Zellen) – exakt der erwartete Diskretisierungsfehler |
 | Abklingende Scherwelle | Amplitude gegen exp(−νk²t) | RK3: 10⁻⁵; steifer Modus (RKC): 0,04 % bei Δt = 1, **Ordnung 2,0 in der Zeit** |
 | Deckelgetriebene Kavität, Re = 100, 64² | Geschwindigkeitsprofile auf den Mittellinien | max. Abweichung von Ghia et al. (1982): 0,004 (u), 0,009 (v). Extrema u_min = −0,2128, v_max = 0,1785, v_min = −0,2527 gegenüber hochgenauen Spektrallösungen (−0,2140 / 0,1796 / −0,2538, Botella & Peyret 1998): Abweichung ≤ 0,6 % |
-| Zylinder im Kanal, Re = 100 (Schäfer & Turek 1996, Fall 2D-2) | c_W,max, c_A,max, Strouhal-Zahl | siehe `tests/cylinder.js` |
+| Zylinder im Kanal, Re = 100 (Schäfer & Turek 1996, Fall 2D-2), nur 20 Zellen je Durchmesser | Strouhal-Zahl, c_W,max, c_A,max | St = 0,302 (Referenz 0,295 – 0,305) ✓; c_W,max = 3,15 (Referenz 3,22 – 3,24, −2,5 %); c_A,max = 0,77 (Referenz 0,99 – 1,01) – die Auftriebsamplitude ist bei dieser groben Auflösung des Körpers deutlich zu klein |
 
 ## Grenzen – was die Simulation nicht ist
 
@@ -97,7 +97,8 @@ siehe unten). Stand der Ergebnisse (Software-Rendering SwiftShader, 32-Bit-Gleit
 - **Sehr zähe Fluide** (Honig, Glycerin) gleichen Geschwindigkeitsunterschiede schneller aus, als ein Bild dauert.
   Stationäre Zustände sind exakt; die Einschwingvorgänge selbst werden bei „Echtzeit“ nur mit wenigen Schritten
   aufgelöst (Zeitlupe wählen, um sie genau zu verfolgen).
-- **Hindernisse** haben Treppenstufen-Genauigkeit (1. Ordnung); Kraftbeiwerte konvergieren entsprechend langsam.
+- **Hindernisse** haben Treppenstufen-Genauigkeit (1. Ordnung). Ablösefrequenz und Widerstand stimmen auf wenige
+  Prozent, die Auftriebsschwankung wird bei grob aufgelösten Körpern spürbar unterschätzt (siehe Validierung).
 - **Stoffwerte** sind Richtwerte bei 20 °C; reale Fluide wie Honig sind temperaturabhängig und teils nicht-newtonsch.
 - **Echtzeit** hängt von der Grafikkarte ab. Reicht die Leistung nicht, läuft die Simulation ehrlich
   ausgewiesen in Zeitlupe weiter, statt die Physik zu verfälschen.
