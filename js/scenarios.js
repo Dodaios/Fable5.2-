@@ -14,6 +14,7 @@
   NS.scenarios = [
     {
       id: 'becken',
+      tips: ["Rühre erst langsam, dann schnell: Schnelle Züge hinterlassen Wirbelpaare, die quer durchs Becken wandern.", "Wechsle rechts die Flüssigkeit auf Honig – die Bewegung stirbt sofort ab. Mit Luft oder Quecksilber lebt sie viel länger.", "Ansicht „Wirbel“: Orange dreht gegen den Uhrzeigersinn, Blau im Uhrzeigersinn."],
       name: 'Freies Becken',
       desc: 'Ein ruhendes, geschlossenes Becken. Ziehe mit Maus oder Finger durch die Flüssigkeit und beobachte, wie Wirbel entstehen, wandern und durch Reibung zerfallen.',
       kind: 'stir', aspect: 2,
@@ -36,6 +37,7 @@
     },
     {
       id: 'karman',
+      tips: ["Stelle Re = 20 ein: Der Nachlauf bleibt ruhig. Ab Re ≈ 47 beginnt er zu schwingen.", "Vergleiche die gemessene Strouhal-Zahl (Messwerte) bei Re = 100 und Re = 200.", "Zeichne mit „Wand“ ein zweites Hindernis in den Nachlauf oder rühre in die Anströmung."],
       name: 'Kármánsche Wirbelstraße',
       desc: 'Gleichmäßige Anströmung eines Zylinders. Ab Re ≈ 47 lösen sich abwechselnd Wirbel ab; die Ablösefrequenz f folgt der Strouhal-Zahl St = f·D/U ≈ 0,2.',
       kind: 'driven', aspect: 3,
@@ -46,13 +48,16 @@
       inDye: [10, 0.5, 0, 0], inColA: COL.cyan, inColB: COL.orange,
       defaults: { fluid: 'wasser', L: 0.08, U: 0.015, view: 0, tool: 'stir', particles: false, speed: 'auto' },
       setup(sol, nx, ny) {
-        sol.initVelocity({ mode: 1 });
+        // kleine Störung im Nachlauf, damit die Wirbelablösung nicht erst aus Rundungsrauschen anwachsen muss
+        const a = ny / 16;
+        sol.initVelocity({ mode: 1, vort: [[0.75 * ny + 2.5 * a, 0.5 * ny + 0.4 * a, 0.3 * a, a]] });
         sol.initScalars({ dyeMode: 6 });
-        sol.initMask([{ type: 'circle', x: 0.75 * ny, y: 0.5 * ny + 0.31, a: ny / 16 }]);
+        sol.initMask([{ type: 'circle', x: 0.75 * ny, y: 0.5 * ny + 0.31, a }]);
       },
     },
     {
       id: 'fluegel',
+      tips: ["Die Messwerte zeigen Auftrieb c_A und Widerstand c_W der Platte.", "Erhöhe die Reynolds-Zahl: Die Strömung auf der Oberseite löst ab, Wirbel schwimmen davon, der Auftrieb schwankt.", "Radiere die Platte weg und zeichne ein eigenes Profil."],
       name: 'Angestellte Platte (Tragflügel)',
       desc: 'Eine schlanke Ellipse mit Anstellwinkel. Die Umströmung erzeugt Auftrieb (c_A) und Widerstand (c_W); bei großem Winkel reißt die Strömung ab.',
       kind: 'driven', aspect: 3,
@@ -70,6 +75,7 @@
     },
     {
       id: 'kavitaet',
+      tips: ["Probiere Re = 100, 1000 und 5000: Der Hauptwirbel wandert zur Mitte, in den Ecken wachsen Gegenwirbel.", "Bei Re = 10 (z. B. Glycerin) ist das Bild fast spiegelsymmetrisch – Trägheit spielt keine Rolle."],
       name: 'Deckelgetriebene Kavität',
       desc: 'Der Deckel eines quadratischen Kastens gleitet nach rechts und schleppt die Flüssigkeit mit. Klassischer Prüfstein für Strömungslöser (Ghia et al. 1982).',
       kind: 'driven', aspect: 1,
@@ -85,6 +91,7 @@
     },
     {
       id: 'kh',
+      tips: ["Aus der glatten Grenzfläche wachsen Wellen, rollen sich zu Wirbeln auf und verschmelzen paarweise.", "Wähle eine zähere Flüssigkeit (Olivenöl, Glycerin): Reibung verbreitert die Scherschicht und dämpft die Instabilität."],
       name: 'Kelvin-Helmholtz-Instabilität',
       desc: 'Zwei Schichten strömen gegeneinander. Die Scherschicht ist instabil und rollt sich zu Wirbeln auf – wie bei Wolkenwalzen oder Wellen im Wind.',
       kind: 'driven', aspect: 2,
@@ -93,13 +100,14 @@
       refLen: 1, refName: 'Gebietshöhe H',
       defaults: { fluid: 'wasser', L: 0.1, U: 0.1, view: 0, tool: 'stir', particles: false, speed: 'auto' },
       setup(sol, nx, ny) {
-        sol.initVelocity({ mode: 3, p0: [0.5, 1 / 50, 0.5, 0.02], p1: [5, 0.06, 0, 0] });
+        sol.initVelocity({ mode: 3, p0: [0.5, 1 / 40, 0.5, 0.02], p1: [5, 0.07, 0, 0] });
         sol.initScalars({ dyeMode: 1, dyeP: [0.5, 0, 0, 0], colA: COL.cyan, colB: COL.magenta });
         sol.initMask([]);
       },
     },
     {
       id: 'strahl',
+      tips: ["Der Strahlkopf rollt sich zu einem Wirbelpaar (Pilzform) auf.", "Bei Re = 100 bleibt der Strahl glatt, bei Re = 1000 und mehr beginnt er zu flattern.", "Stelle ein Hindernis („Wand“) in den Strahl."],
       name: 'Freistrahl',
       desc: 'Aus einer Düse links tritt ein Strahl in ruhende Flüssigkeit. Sein Kopf rollt sich zu einem Wirbelpaar auf; bei höherer Reynolds-Zahl wird der Strahl instabil.',
       kind: 'driven', aspect: 2,
@@ -117,6 +125,7 @@
     },
     {
       id: 'benard',
+      tips: ["Senke ΔT oder die Schichthöhe, bis Ra < 1708: Die Konvektion schläft ein, es bleibt reine Wärmeleitung.", "Mit „Heizen“ und „Kühlen“ löst du selbst Wärmefahnen aus.", "Luft (Pr ≈ 0,7) und Glycerin (Pr ≈ 12 000) konvektieren bei gleicher Rayleigh-Zahl sehr verschieden."],
       name: 'Rayleigh-Bénard-Konvektion',
       desc: 'Unten geheizt, oben gekühlt: Oberhalb der kritischen Rayleigh-Zahl Ra ≈ 1708 setzt Konvektion ein – warme Flüssigkeit steigt in Fahnen auf, kalte sinkt ab (Boussinesq-Näherung).',
       kind: 'thermal', aspect: 2,
@@ -132,13 +141,14 @@
     },
     {
       id: 'tg',
+      tips: ["Im Diagramm ist die gelbe gestrichelte Kurve die exakte Lösung, die blaue die Simulation.", "„Abweichung von exakter Lösung“ in den Messwerten bleibt im Promillebereich und sinkt mit feinerem Gitter quadratisch.", "Sobald du rührst, gilt die exakte Lösung natürlich nicht mehr."],
       name: 'Taylor-Green-Wirbel (Validierung)',
       desc: 'Für dieses Wirbelgitter kennt man die exakte Lösung der Navier-Stokes-Gleichungen: Die Energie klingt mit exp(−4νk²t) ab. Die Messwerte zeigen die Abweichung der Simulation.',
       kind: 'driven', aspect: 1,
       bc: [BC.PERIODIC, BC.PERIODIC, BC.PERIODIC, BC.PERIODIC],
       ubound: 2.0,
       refLen: 1, refName: 'Kantenlänge L',
-      analytic: { type: 'tg', m: 2 },
+      analytic: { type: 'tg', m: 2 }, explicit: true,
       defaults: { fluid: 'olivenoel', L: 0.1, U: 0.1, view: 1, tool: 'stir', particles: true, speed: 'auto', scheme: 'central' },
       setup(sol, nx, ny) {
         sol.initVelocity({ mode: 2, p0: [1, 2, 2, 0] });

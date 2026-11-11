@@ -281,3 +281,11 @@ body:not(.thermal) .thermal-only { display: none; }
   .mini input { width: 70px; }
 }
 .sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
+.tips { margin: 10px 0 0; padding: 0; list-style: none; counter-reset: tip; font-size: 13px; color: #c3ccdb; }
+.tips li { counter-increment: tip; position: relative; padding-left: 26px; margin: 7px 0; }
+.tips li::before {
+  content: counter(tip); position: absolute; left: 0; top: 1px; width: 18px; height: 18px; border-radius: 50%;
+  background: rgba(76, 194, 255, .14); color: var(--accent); font-size: 11px; font-weight: 700;
+  display: grid; place-items: center;
+}
+.tips:empty { display: none; }

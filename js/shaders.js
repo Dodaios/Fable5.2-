@@ -735,17 +735,17 @@ void main() {
                max(max(abs(w0), abs(w1)), max(abs(w2), abs(w3))), abs(d));
     }
   } else if (uWhich == 2) {
-    // Kraft auf eingetauchte Körper: Summe chi * (N(u) - grad p) über Körperflächen
+    // Kraft auf eingetauchte Körper per Impulsbilanz: Summe von N(u) - grad(p) über alle Flächen,
+    // auf die die Zwangskraft wirkt (chi > 0). In Divergenzform ist das exakt das Oberflächenintegral
+    // von Impulsfluss, Druck und Schubspannung über die Hülle des Körpers.
     bool perX = uBC.x == 2, perY = uBC.z == 2;
     float fx = 0.0, fy = 0.0;
     float mc = texelFetch(uMask, c, 0).x;
     if (perX || c.x > 0) {
-      float chi = 0.5 * (mc + fetchC(uMask, c - ivec2(1, 0)));
-      if (chi > 0.0) fx = chi * tendU(c);
+      if (mc + fetchC(uMask, c - ivec2(1, 0)) > 0.0) fx = tendU(c);
     }
     if (perY || c.y > 0) {
-      float chi = 0.5 * (mc + fetchC(uMask, c - ivec2(0, 1)));
-      if (chi > 0.0) fy = chi * tendV(c);
+      if (mc + fetchC(uMask, c - ivec2(0, 1)) > 0.0) fy = tendV(c);
     }
     vec4 s = texelFetch(uScal, c, 0);
     o = vec4(fx, fy, (s.r + s.g + s.b) / 3.0, s.a);

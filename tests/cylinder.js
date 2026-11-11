@@ -15,7 +15,7 @@ const upw = process.argv[4] === 'quick' ? [1, 0] : process.argv[4] === 'auto' ? 
   const t0 = Date.now();
   let last = 0;
   for (;;) {
-    const r = await page.evaluate(() => tests.cylinderRun(60, 3));
+    const r = await page.evaluate(() => tests.cylinderRun(60, 6));
     for (const row of r.rows) series.push(row);
     const t = series[series.length - 1][0];
     if (!series[series.length - 1][4]) { console.log('INSTABIL'); break; }
@@ -24,6 +24,7 @@ const upw = process.argv[4] === 'quick' ? [1, 0] : process.argv[4] === 'auto' ? 
       const rec = series.slice(-60);
       console.log(`t=${t.toFixed(1)} dt=${r.dt.toFixed(3)} cW=${rec[rec.length - 1][1].toFixed(3)} cA=${rec[rec.length - 1][2].toFixed(3)} div=${rec[rec.length - 1][3].toExponential(1)} (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
     }
+    if (process.env.CYL_DUMP) require('fs').writeFileSync(process.env.CYL_DUMP, JSON.stringify(series));
     if (t >= tEnd) break;
   }
   // Auswertung über das letzte Drittel

@@ -44,7 +44,7 @@
   const run = {
     simTime: 0, speedEMA: 1, stepsEMA: 0, fiEMA: 16.7, budget: 3, lastT: 0, frameNo: 0,
     stats: null, ub: 1, ranges: { w: 0.05, u: 0.5, p: 0.1, T: 0.5 },
-    hist: [], histSkip: 0, ke0: null, tgAcc: 0,
+    hist: [], histSkip: 0, ke0: null, tgAcc: 0, acc0: 0, accLog: [],
     cross: [], fyMean: 0, fyPrev: 0, St: NaN, cdEMA: NaN, clAmp: NaN,
     stepOnce: false, pendingFrames: 0, hue: 0, lastDom: 0, interacted: false,
   };
@@ -102,6 +102,7 @@
     p.cycles = state.cycles;
     p.uc = sc.uc || 1;
     p.force = [0, 0];
+    p.forceStiff = sc.explicit ? 1 : 0;
     p.upw = state.scheme === 'central' ? [0, 0] : state.scheme === 'quick' ? [1, 0] : [-0.5, 0.25 / phys.nuG];
     if (sc.kind === 'thermal') {
       p.buoy = [1 / ny, 0];
@@ -157,7 +158,7 @@
     sc.setup(solver, nx, ny);
     solver.projectField(8);
     Object.assign(run, {
-      simTime: 0, stats: null, ub: sc.ubound || 1, hist: [], histSkip: 0, ke0: null, tgAcc: 0,
+      simTime: 0, stats: null, ub: sc.ubound || 1, hist: [], histSkip: 0, ke0: null, tgAcc: 0, acc0: 0, accLog: [],
       cross: [], fyMean: 0, fyPrev: 0, St: NaN, cdEMA: NaN, clAmp: NaN, speedEMA: 1,
       ranges: { w: 0.05, u: 0.5, p: 0.1, T: 0.5 },
     });
@@ -282,7 +283,11 @@
     R.u = Math.max(ease(R.u, s.umax), 1e-6);
     R.p = Math.max(ease(R.p, Math.max(s.pMax - s.pMean, s.pMean - s.pMin)), 1e-9);
     R.T = sc.kind === 'thermal' ? 0.5 : Math.max(ease(R.T, Math.max(Math.abs(s.tMax), Math.abs(s.tMin))), 1e-6);
-    if (run.ke0 === null) run.ke0 = s.ke;
+    // Exponent der exakten Lösung zum Zeitpunkt dieser (verzögert eintreffenden) Messung
+    let acc = run.tgAcc;
+    for (const e of run.accLog) if (e[0] === s.steps) acc = e[1];
+    if (run.ke0 === null) { run.ke0 = s.ke; run.acc0 = acc; }
+    s.exact = Math.exp(-(acc - run.acc0));
     // Kraftbeiwerte und Strouhal-Zahl
     let cd = NaN, cl = NaN;
     if (sc.body) {
@@ -304,7 +309,7 @@
     }
     if (++run.histSkip >= 3) {
       run.histSkip = 0;
-      run.hist.push({ t: run.simTime, tg: s.time, ke: s.ke, ens: s.ens, umax: s.umax, fx: s.fx, fy: s.fy, cd, cl, tgA: Math.exp(-run.tgAcc) });
+      run.hist.push({ t: run.simTime, tg: s.time, ke: s.ke, ens: s.ens, umax: s.umax, fx: s.fx, fy: s.fy, cd, cl, tgA: s.exact });
       if (run.hist.length > 1500) run.hist = run.hist.filter((_, k) => k % 2 === 1);
     }
   }
@@ -377,7 +382,10 @@
       if (state.particles) renderer.updateParticles(gridDt, wall);
     }
 
-    solver.requestStats([ptr.x, ptr.y]);
+    if (solver.requestStats([ptr.x, ptr.y])) {
+      run.accLog.push([solver.steps, run.tgAcc]);
+      if (run.accLog.length > 12) run.accLog.shift();
+    }
     draw();
     if (tNow - run.lastDom > 160) { run.lastDom = tNow; updateReadouts(); }
   }
@@ -393,7 +401,7 @@
     renderer.render({
       view: state.view, range, cmap: 'inferno', dyeGain: 2.4,
       particles: state.particles, arrows: state.arrows,
-      arrowScale: 1 / Math.max(R.u, 1e-6), streak: 5 / Math.max(R.u, 0.05),
+      arrowScale: 1 / Math.max(R.u, 1e-6), streak: 0.03 * solver.ny / Math.max(R.u, 0.05),
     });
   }
 
@@ -468,7 +476,7 @@
         set('st', isFinite(run.St) ? fmt(run.St, 3) : '– (noch keine Schwingung)');
       }
       if (sc.analytic && run.ke0) {
-        const dev = s.ke / run.ke0 / Math.exp(-run.tgAcc) - 1;
+        const dev = s.ke / run.ke0 / s.exact - 1;
         set('tg', (dev >= 0 ? '+' : '') + fmt(dev * 100, 2) + ' %', Math.abs(dev) < 0.01 ? 'good' : Math.abs(dev) < 0.05 ? 'warn' : 'bad');
       }
       const pr = s.probe;
@@ -557,6 +565,12 @@
     const sc = state.scenario;
     $('scenario').value = sc.id;
     $('scenarioDesc').textContent = sc.desc;
+    const tips = $('scenarioTips');
+    if (tips.dataset.id !== sc.id) {
+      tips.dataset.id = sc.id;
+      tips.innerHTML = '';
+      for (const t of sc.tips || []) { const li = document.createElement('li'); li.textContent = t; tips.appendChild(li); }
+    }
     $('fluid').value = NS.fluidById(state.fluid) && Math.abs(NS.fluidById(state.fluid).mu - state.mu) < 1e-12 && Math.abs(NS.fluidById(state.fluid).rho - state.rho) < 1e-9 ? state.fluid : 'custom';
     $('muSlider').value = Math.log10(state.mu);
     if (document.activeElement !== $('muInput')) $('muInput').value = +(state.mu * 1e3).toPrecision(4);
@@ -774,9 +788,9 @@
       glx.read(solver.corr);
       const ms = (performance.now() - t0) / n;     // ms je Zeitschritt bei 256 x 128
       run.benchMs = ms;
-      if (ms < 0.35) return 384;
-      if (ms < 0.9) return 256;
-      if (ms < 2.5) return 192;
+      if (ms < 0.25) return 384;
+      if (ms < 0.7) return 256;
+      if (ms < 2.0) return 192;
       return 128;
     } catch (e) {
       console.warn(e);
