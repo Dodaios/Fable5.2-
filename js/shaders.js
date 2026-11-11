@@ -274,19 +274,27 @@ void main() {
 `;
 
   // ---------------------------------------------------------------------------
-  // Runge-Kutta-Tschebyschow-Stufe für steife Viskosität:
-  //   Y_j = cA * Y_{j-1} + cB * Y_{j-2} + cC * (nu * Laplace(Y_{j-1}) + S)
+  // Runge-Kutta-Tschebyschow-Stufe 2. Ordnung für steife Viskosität (F(Y) = nu*Laplace(Y) + S):
+  //   Y_j = c0*Y_0 + c1*Y_{j-1} + c2*Y_{j-2} + c3*dt*F(Y_{j-1}) + c4*dt*F(Y_0)
   // ---------------------------------------------------------------------------
   const RKC = HEAD + COMMON + TOOL + `
+uniform sampler2D uY0;
 uniform sampler2D uY1;
 uniform sampler2D uY2;
 uniform sampler2D uS;
 uniform sampler2D uMask;
-uniform vec3 uC;
+uniform float uC0;
+uniform vec4 uC;         // c1, c2, c3*dt, c4*dt
 uniform float uNu;
 uniform float uDtEff;
 uniform vec2 uToolVel;
 out vec4 o;
+float lapU(sampler2D t, ivec2 c, float yc) {
+  return fetchU(t, c + ivec2(1, 0)) + fetchU(t, c + ivec2(-1, 0)) + fetchU(t, c + ivec2(0, 1)) + fetchU(t, c + ivec2(0, -1)) - 4.0 * yc;
+}
+float lapV(sampler2D t, ivec2 c, float yc) {
+  return fetchV(t, c + ivec2(1, 0)) + fetchV(t, c + ivec2(-1, 0)) + fetchV(t, c + ivec2(0, 1)) + fetchV(t, c + ivec2(0, -1)) - 4.0 * yc;
+}
 void main() {
   ivec2 c = ivec2(gl_FragCoord.xy);
   bool perX = uBC.x == 2, perY = uBC.z == 2;
@@ -295,12 +303,15 @@ void main() {
   ivec2 cu = c;
   if (perX && cu.x == uN.x) cu.x = 0;
   if (cu.y < uN.y) {
-    float y1 = texelFetch(uY1, cu, 0).x;
+    float y0 = texelFetch(uY0, cu, 0).x, y1 = texelFetch(uY1, cu, 0).x;
     bool inner = perX || (cu.x > 0 && cu.x < uN.x);
-    float F = texelFetch(uS, cu, 0).x;
-    if (inner) F += uNu * (fetchU(uY1, cu + ivec2(1, 0)) + fetchU(uY1, cu + ivec2(-1, 0))
-                         + fetchU(uY1, cu + ivec2(0, 1)) + fetchU(uY1, cu + ivec2(0, -1)) - 4.0 * y1);
-    float un = uC.x * y1 + uC.y * texelFetch(uY2, cu, 0).x + uC.z * F;
+    float S = texelFetch(uS, cu, 0).x;
+    float F1 = S, F0 = S;
+    if (inner) {
+      if (uC.z != 0.0) F1 += uNu * lapU(uY1, cu, y1);
+      if (uC.w != 0.0) F0 += uNu * lapU(uY0, cu, y0);
+    }
+    float un = uC0 * y0 + uC.x * y1 + uC.y * texelFetch(uY2, cu, 0).x + uC.z * F1 + uC.w * F0;
     if (inner) {
       un *= 1.0 - 0.5 * (fetchC(uMask, cu) + fetchC(uMask, cu - ivec2(1, 0)));
       un = mix(un, uToolVel.x, toolW(vec2(cu) + vec2(0.0, 0.5), uDtEff));
@@ -311,12 +322,15 @@ void main() {
   ivec2 cv = c;
   if (perY && cv.y == uN.y) cv.y = 0;
   if (cv.x < uN.x) {
-    float y1 = texelFetch(uY1, cv, 0).y;
+    float y0 = texelFetch(uY0, cv, 0).y, y1 = texelFetch(uY1, cv, 0).y;
     bool inner = perY || (cv.y > 0 && cv.y < uN.y);
-    float F = texelFetch(uS, cv, 0).y;
-    if (inner) F += uNu * (fetchV(uY1, cv + ivec2(1, 0)) + fetchV(uY1, cv + ivec2(-1, 0))
-                         + fetchV(uY1, cv + ivec2(0, 1)) + fetchV(uY1, cv + ivec2(0, -1)) - 4.0 * y1);
-    float vn = uC.x * y1 + uC.y * texelFetch(uY2, cv, 0).y + uC.z * F;
+    float S = texelFetch(uS, cv, 0).y;
+    float F1 = S, F0 = S;
+    if (inner) {
+      if (uC.z != 0.0) F1 += uNu * lapV(uY1, cv, y1);
+      if (uC.w != 0.0) F0 += uNu * lapV(uY0, cv, y0);
+    }
+    float vn = uC0 * y0 + uC.x * y1 + uC.y * texelFetch(uY2, cv, 0).y + uC.z * F1 + uC.w * F0;
     if (inner) {
       vn *= 1.0 - 0.5 * (fetchC(uMask, cv) + fetchC(uMask, cv - ivec2(0, 1)));
       vn = mix(vn, uToolVel.y, toolW(vec2(cv) + vec2(0.5, 0.0), uDtEff));
@@ -363,7 +377,13 @@ void main() {
   vec4 tend = -(flux(uE, qW, qC, qE, qEE) - flux(uW, qWW, qW, qC, qE))
               -(flux(vT, qB, qC, qT, qTT) - flux(vB, qBB, qB, qC, qT))
               + uDiff * (qE + qW + qT + qB - 4.0 * qC);
-  vec4 qn = uAB.x * texelFetch(uScal0, c, 0) + uAB.y * (qC + uDt * tend);
+  vec4 q0 = texelFetch(uScal0, c, 0);
+  vec4 qn = uAB.x * q0 + uAB.y * (qC + uDt * tend);
+  // Sicherheitsnetz: lokales Maximumprinzip. Bei eingehaltener CFL-Bedingung und divergenzfreiem
+  // Feld erfüllt das Verfahren es von selbst; die Begrenzung greift nur bei Ausreißern.
+  vec4 lo = min(min(min(qC, q0), min(qE, qW)), min(qT, qB));
+  vec4 hi = max(max(max(qC, q0), max(qE, qW)), max(qT, qB));
+  qn = clamp(qn, lo, hi);
   float w = toolW(vec2(c) + 0.5, uAB.y * uDt);
   o = mix(qn, uToolCol, w * uToolChan);
 }
@@ -738,17 +758,17 @@ void main() {
     // Kraft auf eingetauchte Körper per Impulsbilanz: Summe von N(u) - grad(p) über alle Flächen,
     // auf die die Zwangskraft wirkt (chi > 0). In Divergenzform ist das exakt das Oberflächenintegral
     // von Impulsfluss, Druck und Schubspannung über die Hülle des Körpers.
+    // Zusätzlich der Impuls M in diesem Gebiet: Kraft auf den Körper = Summe(N - grad p) - dM/dt.
     bool perX = uBC.x == 2, perY = uBC.z == 2;
-    float fx = 0.0, fy = 0.0;
+    float fx = 0.0, fy = 0.0, mx = 0.0, my = 0.0;
     float mc = texelFetch(uMask, c, 0).x;
     if (perX || c.x > 0) {
-      if (mc + fetchC(uMask, c - ivec2(1, 0)) > 0.0) fx = tendU(c);
+      if (mc + fetchC(uMask, c - ivec2(1, 0)) > 0.0) { fx = tendU(c); mx = w.x; }
     }
     if (perY || c.y > 0) {
-      if (mc + fetchC(uMask, c - ivec2(0, 1)) > 0.0) fy = tendV(c);
+      if (mc + fetchC(uMask, c - ivec2(0, 1)) > 0.0) { fy = tendV(c); my = w.y; }
     }
-    vec4 s = texelFetch(uScal, c, 0);
-    o = vec4(fx, fy, (s.r + s.g + s.b) / 3.0, s.a);
+    o = vec4(fx, fy, mx, my);
   } else {
     float p = texelFetch(uPres, c, 0).x;
     float T = texelFetch(uScal, c, 0).a;

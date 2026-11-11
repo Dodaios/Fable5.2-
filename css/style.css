@@ -273,7 +273,22 @@ body:not(.thermal) .thermal-only { display: none; }
   #viewport { padding: 8px; }
   #panel { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
   .only-narrow { display: grid !important; }
-  .brand span { display: none; }
+  .brand div { display: none; }
+  .scenario select { max-width: none; }
+  /* Ansichtsleiste unter das Bild statt ins Bild */
+  #canvasWrap { overflow: visible; background: transparent; box-shadow: none; }
+  #sim { border-radius: 10px; box-shadow: 0 0 0 1px var(--line); }
+  #viewport { padding-bottom: 54px !important; }
+  #hudTop { display: contents; }
+  #hud { position: absolute; top: 8px; left: 8px; right: 8px; pointer-events: none; }
+  #viewbar { position: absolute; top: calc(100% + 10px); left: 0; right: 0; justify-content: center; margin: 0; flex-wrap: nowrap; gap: 6px; }
+  .segmented button { padding: 6px 8px; font-size: 12px; white-space: nowrap; }
+  #legendTitle { display: none; }
+  #legend { padding: 3px 8px; left: 8px; bottom: 8px; }
+  #legend .bar { margin-top: 0; }
+  #legend canvas { width: 90px; }
+  #hint { font-size: 12.5px; padding: 6px 12px; bottom: 22%; }
+  .chip { font-size: 11.5px; padding: 2px 8px; }
   #topbar { padding: 8px 10px; gap: 8px; }
   #toolbar { padding: 8px 10px; gap: 8px 10px; }
   .seg span { display: none; }

@@ -158,7 +158,9 @@
       if ((k + 1) % every === 0) {
         const st = solver.readStatsSync();
         c.ub = Math.max(1.5, st.cfl * 1.1);
-        out.push([solver.time / c.D, 2 * st.fx / c.D, 2 * st.fy / c.D, st.divMax, st.valid ? 1 : 0]);
+        const F = NS.Solver.bodyForce(st, c.prev);
+        c.prev = { time: st.time, mx: st.mx, my: st.my };
+        out.push([solver.time / c.D, 2 * F[0] / c.D, 2 * F[1] / c.D, st.divMax, st.valid ? 1 : 0, 2 * st.fx / c.D, 2 * st.fy / c.D]);
       }
     }
     return { rows: out, dt: solver.lastPlan.dt, mode: solver.lastPlan.mode, steps: solver.steps };

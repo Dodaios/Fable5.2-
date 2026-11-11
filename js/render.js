@@ -17,7 +17,7 @@
 
   /** Divergierende Skala, t in [-1,1] – identisch zur GLSL-Funktion divMap. */
   function divColor(t) {
-    const a = Math.min(Math.abs(t), 1);
+    const a = Math.pow(Math.min(Math.abs(t), 1), 0.75);
     const c = t >= 0 ? DIV_POS : DIV_NEG;
     const k1 = Math.min(a * 1.6, 1), k2 = Math.max(a * 1.6 - 1, 0) * 0.75;
     return [0, 1, 2].map((i) => { const m = BG[i] + (c[i] - BG[i]) * k1; return m + (1 - m) * k2; });
@@ -110,7 +110,7 @@ vec3 seqMap(float t) {
   return mix(uCmap[k], uCmap[k + 1], x - float(k));
 }
 vec3 divMap(float t) {
-  float a = min(abs(t), 1.0);
+  float a = pow(min(abs(t), 1.0), 0.75);
   vec3 c = t >= 0.0 ? uDivPos : uDivNeg;
   vec3 m = mix(uBg, c, min(a * 1.6, 1.0));
   return mix(m, vec3(1.0), max(a * 1.6 - 1.0, 0.0) * 0.75);

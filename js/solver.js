@@ -8,7 +8,7 @@
  *           (kinetische Energie erhaltend) mit optionaler QUICK-Aufwindkorrektur.
  *   Zeit:   SSP-Runge-Kutta 3. Ordnung, Projektion in jeder Stufe (inkrementelle
  *           Druckform). Bei steifer Viskosität (zähe Fluide): Druckkorrektur-
- *           verfahren mit Runge-Kutta-Tschebyschow-Stufen für den Reibungsterm.
+ *           verfahren mit Runge-Kutta-Tschebyschow-Stufen 2. Ordnung für den Reibungsterm.
  *   Druck:  Poisson-Gleichung per geometrischem Mehrgitter (Rot-Schwarz-Gauß-
  *           Seidel, exakte Lösung auf dem gröbsten Gitter).
  *   Körper: eingetauchte Ränder mit direkter Zwangskraft (Volumenanteil-Maske).
@@ -26,8 +26,8 @@
   // Stabilitätsgrenze für explizite Diffusion (nu * dt); RK3 verträgt bis ~0.31 allein,
   // zusammen mit Konvektion bei CFL <= 1 bleibt 0.15 sicher im Stabilitätsgebiet.
   const NU_DT_EXPLICIT = 0.15;
-  const RKC_EPS = 0.5;       // Dämpfung der Tschebyschow-Stufen
-  const RKC_SMAX = 160;
+  const RKC_EPS = 4;         // Dämpfung der Tschebyschow-Stufen (steife Moden: |P| <~ 0,45)
+  const RKC_SMAX = 240;
 
   /** Gauß-Jordan-Inversion einer dichten n x n-Matrix (Float64Array, zeilenweise). */
   function invertDense(A, n) {
@@ -85,25 +85,36 @@
     return new Float32Array(invertDense(A, n));
   }
 
-  /** Koeffizienten des gedämpften Runge-Kutta-Tschebyschow-Verfahrens 1. Ordnung. */
+  /** Koeffizienten des gedämpften Runge-Kutta-Tschebyschow-Verfahrens 2. Ordnung
+   *  (Sommeijer, Shampine & Verwer 1998), s >= 2 Stufen:
+   *    Y_1 = Y_0 + mt_1 dt F_0
+   *    Y_j = (1 - mu_j - nu_j) Y_0 + mu_j Y_{j-1} + nu_j Y_{j-2} + mt_j dt F_{j-1} + gt_j dt F_0
+   *  Stabilitätsintervall [-beta, 0] mit beta = (1 + w0) / w1. */
   function rkcCoeffs(s, eps) {
     const w0 = 1 + eps / (s * s);
-    const T = [1, w0], dT = [0, 1];
+    const T = [1, w0], dT = [0, 1], ddT = [0, 0];
     for (let j = 2; j <= s; j++) {
       T.push(2 * w0 * T[j - 1] - T[j - 2]);
       dT.push(2 * T[j - 1] + 2 * w0 * dT[j - 1] - dT[j - 2]);
+      ddT.push(4 * dT[j - 1] + 2 * w0 * ddT[j - 1] - ddT[j - 2]);
     }
-    const w1 = T[s] / dT[s];
-    const st = [{ a: 1, b: 0, c: w1 / w0 }];
+    const w1 = dT[s] / ddT[s];
+    const b = [0, 0];
+    for (let j = 2; j <= s; j++) b.push(ddT[j] / (dT[j] * dT[j]));
+    b[0] = b[1] = b[2];
+    const a = b.map((bj, j) => 1 - bj * T[j]);
+    // Stufen als (c0, c1, c2, c3, c4) für  c0*Y0 + c1*Y_{j-1} + c2*Y_{j-2} + c3*dt*F_{j-1} + c4*dt*F_0
+    const st = [{ c0: 1, c1: 0, c2: 0, c3: 0, c4: b[1] * w1 }];
     for (let j = 2; j <= s; j++) {
-      st.push({ a: 2 * w0 * T[j - 1] / T[j], b: -T[j - 2] / T[j], c: 2 * w1 * T[j - 1] / T[j] });
+      const mu = 2 * b[j] * w0 / b[j - 1], nu = -b[j] / b[j - 2], mt = 2 * b[j] * w1 / b[j - 1];
+      st.push({ c0: 1 - mu - nu, c1: mu, c2: nu, c3: mt, c4: -a[j - 1] * mt });
     }
-    return { stages: st, beta: (w0 + 1) / w1 };
+    return { stages: st, beta: (1 + w0) / w1 };
   }
 
-  /** kleinste Stufenzahl mit Stabilitätsintervall >= z */
+  /** kleinste Stufenzahl (>= 2) mit Stabilitätsintervall >= z */
   function rkcStageCount(z, eps) {
-    let s = Math.max(1, Math.ceil(Math.sqrt(z / 1.45)));
+    let s = Math.max(2, Math.floor(Math.sqrt(z / 0.7)));
     while (s < 4000 && 0.92 * rkcCoeffs(s, eps).beta < z) s++;
     return s;
   }
@@ -130,7 +141,7 @@
         buoy: [0, 0],        // Auftrieb: Koeffizient, Referenztemperatur
         diff: [0, 0, 0, 0],  // Diffusivitäten (Farbstoff r,g,b; Temperatur)
         cycles: 2,           // Mehrgitter-V-Zyklen je Projektion
-        cfl: 0.8,
+        cfl: 0.75,
         uc: 1,               // Konvektionsgeschwindigkeit am Ausstrom
         forceStiff: 0,       // nur für Tests: 1 = immer RK3, 2 = immer RKC
       };
@@ -185,7 +196,7 @@
 
       const W = nx + 1, H = ny + 1;
       this.u = this._t(W, H, 'rg'); this.ua = this._t(W, H, 'rg');
-      this.ub = this._t(W, H, 'rg'); this.uc = this._t(W, H, 'rg');
+      this.ub = this._t(W, H, 'rg'); this.uc = this._t(W, H, 'rg'); this.ud = this._t(W, H, 'rg');
       this.p = this._t(nx, ny, 'r'); this.pb = this._t(nx, ny, 'r');
       this.s = this._t(nx, ny, 'rgba'); this.sa = this._t(nx, ny, 'rgba'); this.sb = this._t(nx, ny, 'rgba');
       this.mask = this._t(nx, ny, 'r8'); this.maskB = this._t(nx, ny, 'r8');
@@ -433,26 +444,22 @@
         sCur = sTargets[k];
       }
       { const t = this.s; this.s = this.sa; this.sa = t; }
-      // Tschebyschow-Stufen
+      // Tschebyschow-Stufen: Y_0 = this.u bleibt erhalten, die Stufen rotieren durch drei Texturen
       const co = rkcCoeffs(s, RKC_EPS).stages;
       let y2 = this.u, y1 = this.u;
-      const pool = [this.ub, this.uc, this.u];
+      const pool = [this.ub, this.uc, this.ud];
       for (let j = 0; j < s; j++) {
-        const out = pool[j % 3];
+        const out = pool[j % 3], k = co[j];
         pr.rkc.use({
-          uY1: y1, uY2: y2, uS: this.ua, uMask: this.mask,
-          uC: [co[j].a, co[j].b, co[j].c * dt], uNu: p.nu, uDtEff: dt / s,
+          uY0: this.u, uY1: y1, uY2: y2, uS: this.ua, uMask: this.mask,
+          uC0: k.c0, uC: [k.c1, k.c2, k.c3 * dt, k.c4 * dt], uNu: p.nu, uDtEff: dt / s,
           uToolSeg: tl.seg, uToolPar: tl.velPar, uToolVel: tl.vel,
         });
         glx.draw(out);
         y2 = y1; y1 = out;
       }
-      // Projektion (Ziel darf weder y1 noch die Tendenz sein)
-      const out = [this.ub, this.uc, this.u].find((t) => t !== y1);
-      this._project(y1, out, 1 / dt);
-      const all = [this.u, this.ua, this.ub, this.uc];
-      const rest = all.filter((t) => t !== out);
-      this.u = out; this.ua = rest[0]; this.ub = rest[1]; this.uc = rest[2];
+      // Projektion; das Ergebnis ersetzt Y_0
+      this._project(y1, this.u, 1 / dt);
     }
 
     // ----------------------------------------------------------------- Diagnose
@@ -483,11 +490,18 @@
         time: this.time, steps: this.steps,
         ke: b[0], ens: b[1], divRms: Math.sqrt(Math.max(b[2], 0) / n), pMean: b[3] / n,
         cfl: b[4], umax: b[5], wmax: b[6], divMax: b[7],
-        fx: b[8], fy: b[9], dye: b[10], tMean: b[11] / n,
+        fx: b[8], fy: b[9], mx: b[10], my: b[11],
         pMax: b[12], pMin: -b[13], tMax: b[14], tMin: -b[15],
         probe: { u: b[16], v: b[17], p: b[18], w: b[19], T: b[20], dye: b[21], mask: b[22], div: b[23] },
         valid: isFinite(b[0]) && isFinite(b[4]) && isFinite(b[3]),
       };
+    }
+
+    /** Kraft auf eingetauchte Körper aus zwei aufeinanderfolgenden Messungen (inkl. -dM/dt). */
+    static bodyForce(cur, prev) {
+      if (!prev || !(cur.time > prev.time)) return [cur.fx, cur.fy];
+      const dt = cur.time - prev.time;
+      return [cur.fx - (cur.mx - prev.mx) / dt, cur.fy - (cur.my - prev.my) / dt];
     }
 
     readStatsSync(probePos) {

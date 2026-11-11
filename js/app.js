@@ -43,13 +43,13 @@
   const phys = { dx: 1, nu: 1e-6, U0: 1, T0: 1, Re: 1, ReH: 1, Ra: 0, Pr: 0, nuG: 0.01 };
   const run = {
     simTime: 0, speedEMA: 1, stepsEMA: 0, fiEMA: 16.7, budget: 3, lastT: 0, frameNo: 0,
-    stats: null, ub: 1, ranges: { w: 0.05, u: 0.5, p: 0.1, T: 0.5 },
+    stats: null, ub: 1, ubHist: [], statsMinSteps: 0, ranges: { w: 0.05, u: 0.5, p: 0.1, T: 0.5 },
     hist: [], histSkip: 0, ke0: null, tgAcc: 0, acc0: 0, accLog: [],
     cross: [], fyMean: 0, fyPrev: 0, St: NaN, cdEMA: NaN, clAmp: NaN,
     stepOnce: false, pendingFrames: 0, hue: 0, lastDom: 0, interacted: false,
   };
   const ptr = { down: false, over: false, x: 0, y: 0, lx: 0, ly: 0, vx: 0, vy: 0, cssX: 0, cssY: 0 };
-  let glx, solver, renderer, canvas;
+  let glx, solver, renderer, canvas, hintTimer = 0;
 
   // ------------------------------------------------------------------ Zahlenformat
   const SUP = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹' };
@@ -158,8 +158,8 @@
     sc.setup(solver, nx, ny);
     solver.projectField(8);
     Object.assign(run, {
-      simTime: 0, stats: null, ub: sc.ubound || 1, hist: [], histSkip: 0, ke0: null, tgAcc: 0, acc0: 0, accLog: [],
-      cross: [], fyMean: 0, fyPrev: 0, St: NaN, cdEMA: NaN, clAmp: NaN, speedEMA: 1,
+      simTime: 0, stats: null, ub: sc.ubound || 1, ubHist: [], statsMinSteps: 0, hist: [], histSkip: 0, ke0: null, tgAcc: 0, acc0: 0, accLog: [],
+      cross: [], fyMean: 0, fyPrev: 0, St: NaN, cdEMA: NaN, clAmp: NaN, speedEMA: 1, prevForce: null,
       ranges: { w: 0.05, u: 0.5, p: 0.1, T: 0.5 },
     });
     solver.tool.velPar[3] = 0; solver.tool.scalPar[3] = 0;
@@ -213,6 +213,7 @@
       ptr.down = true; ptr.over = true;
       ptr.x = ptr.lx = p[0]; ptr.y = ptr.ly = p[1]; ptr.vx = ptr.vy = 0;
       if (!run.interacted) { run.interacted = true; $('hint').classList.add('gone'); }
+      clearTimeout(hintTimer);
       placeBrush();
       e.preventDefault();
     });
@@ -272,14 +273,21 @@
 
   // ------------------------------------------------------------------ Diagnose
   function onStats(s) {
+    if (s.steps < run.statsMinSteps) return;          // veraltete Messung (vor einem Sprung in der Zeit)
     if (!s.valid) { blowUp(); return; }
     const sc = state.scenario;
     run.stats = s;
-    run.ub = s.cfl;
+    // Geschwindigkeitsschranke für die CFL-Bedingung: Maximum der letzten Messungen (sie treffen
+    // um 1–2 Bilder verzögert ein), dazu ein Sicherheitszuschlag in frame()
+    run.ubHist.push(s.cfl);
+    if (run.ubHist.length > 3) run.ubHist.shift();
+    run.ub = Math.max.apply(null, run.ubHist);
     if (Math.abs(s.pMean) > 1e-4) solver.pShift = 0.25 * s.pMean;
     const ease = (cur, target) => cur + (target - cur) * (target > cur ? 0.35 : 0.04);
     const R = run.ranges;
-    R.w = Math.max(ease(R.w, 0.55 * s.wmax), 1e-6);
+    // Wirbelstärke: an der Streuung orientieren, damit dünne Wandgrenzschichten die Skala nicht dominieren
+    const wRms = Math.sqrt(2 * s.ens / (solver.nx * solver.ny));
+    R.w = Math.max(ease(R.w, Math.min(0.6 * s.wmax, Math.max(5 * wRms, 0.15 * s.wmax))), 1e-6);
     R.u = Math.max(ease(R.u, s.umax), 1e-6);
     R.p = Math.max(ease(R.p, Math.max(s.pMax - s.pMean, s.pMean - s.pMin)), 1e-9);
     R.T = sc.kind === 'thermal' ? 0.5 : Math.max(ease(R.T, Math.max(Math.abs(s.tMax), Math.abs(s.tMin))), 1e-6);
@@ -292,7 +300,10 @@
     let cd = NaN, cl = NaN;
     if (sc.body) {
       const D = sc.body.D * solver.ny;
-      cd = 2 * s.fx / D; cl = 2 * s.fy / D;
+      const F = NS.Solver.bodyForce(s, run.prevForce);
+      run.prevForce = { time: s.time, mx: s.mx, my: s.my };
+      s.Fx = F[0]; s.Fy = F[1];
+      cd = 2 * F[0] / D; cl = 2 * F[1] / D;
       run.cdEMA = isFinite(run.cdEMA) ? run.cdEMA + (cd - run.cdEMA) * 0.02 : cd;
       run.fyMean += (cl - run.fyMean) * 0.004;
       const y = cl - run.fyMean;
@@ -309,7 +320,7 @@
     }
     if (++run.histSkip >= 3) {
       run.histSkip = 0;
-      run.hist.push({ t: run.simTime, tg: s.time, ke: s.ke, ens: s.ens, umax: s.umax, fx: s.fx, fy: s.fy, cd, cl, tgA: s.exact });
+      run.hist.push({ t: run.simTime, tg: s.time, ke: s.ke, ens: s.ens, umax: s.umax, fx: s.Fx || 0, fy: s.Fy || 0, cd, cl, tgA: s.exact });
       if (run.hist.length > 1500) run.hist = run.hist.filter((_, k) => k % 2 === 1);
     }
   }
@@ -342,7 +353,7 @@
     const tf = toolFrame(wall);
     let gridDt = 0, nSteps = 0, limited = false;
     if (!state.paused || run.stepOnce) {
-      const ub = Math.max(run.ub * 1.15, tf.forcing, sc.kind === 'stir' ? 0.02 : (sc.kind === 'thermal' ? 0.05 : 1.0));
+      const ub = Math.max(run.ub * 1.25, 1.6 * tf.forcing, sc.kind === 'stir' ? 0.02 : (sc.kind === 'thermal' ? 0.05 : 1.0));
       const nMax = run.stepOnce ? 1 : Math.max(1, Math.round(run.budget));
       if (state.speed === 'auto' || run.stepOnce) {
         const want = sc.kind === 'thermal' ? 4 : 2.5;
@@ -472,7 +483,7 @@
       set('div', fmt(s.divMax, 2), s.divMax < 1e-3 ? 'good' : s.divMax < 2e-2 ? 'warn' : 'bad');
       if (sc.body) {
         set('cd', fmt(run.cdEMA, 3));
-        set('cl', fmt(2 * s.fy / (sc.body.D * solver.ny), 3));
+        set('cl', fmt(2 * (s.Fy || 0) / (sc.body.D * solver.ny), 3));
         set('st', isFinite(run.St) ? fmt(run.St, 3) : '– (noch keine Schwingung)');
       }
       if (sc.analytic && run.ke0) {
@@ -589,14 +600,19 @@
     $('dtSlider').value = Math.log10(state.dT);
     $('dtOut').textContent = fmt(state.dT) + ' K';
     // Reynolds-Kasten
-    $('reOut').textContent = fmt(phys.Re);
+    const thermal = sc.kind === 'thermal';
+    const lead = thermal ? phys.Ra : phys.Re;
+    $('reTitle').textContent = thermal ? 'Rayleigh-Zahl' : 'Reynolds-Zahl';
+    $('reOut').textContent = fmt(lead);
     const uTxt = sc.kind === 'stir' ? fmtUnit(phys.U0, 'vel') + ' (volle Rührgeschwindigkeit)' : fmtUnit(phys.U0, 'vel');
-    $('reTerms').textContent = uTxt + ' · ' + fmtUnit(sc.refLen * state.L, 'len') + ' / ' + fmt(phys.nu * 1e6) + ' mm²/s';
-    $('reMarker').style.left = Math.min(100, Math.max(0, (Math.log10(Math.max(phys.Re, 1e-9)) + 2) * 10)) + '%';
+    $('reFormula').innerHTML = thermal
+      ? '<i>Ra</i> = <i>g β</i> Δ<i>T H</i>³ / (<i>ν κ</i>) – Auftrieb gegen Reibung und Wärmeleitung'
+      : '<i>Re</i> = <i>U</i>·<i>L</i> / <i>ν</i> = ' + uTxt + ' · ' + fmtUnit(sc.refLen * state.L, 'len') + ' / ' + fmt(phys.nu * 1e6) + ' mm²/s';
+    $('reMarker').style.left = Math.min(100, Math.max(0, (Math.log10(Math.max(lead, 1e-9)) + 2) * 10)) + '%';
     $('reRegime').textContent = regimeText(sc, phys.Re);
     let extra = 'Bezugslänge <i>L</i>: ' + sc.refName + ' = <b>' + fmtUnit(sc.refLen * state.L, 'len') + '</b>';
-    if (sc.kind === 'thermal') {
-      extra = 'Rayleigh-Zahl <i>Ra</i> = <i>gβ</i>Δ<i>T H</i>³/(<i>νκ</i>) = <b>' + fmt(phys.Ra) + '</b> · Prandtl-Zahl <i>Pr</i> = <b>' + fmt(phys.Pr) + '</b><br>Freifallgeschwindigkeit <i>U</i> = √(<i>gβ</i>Δ<i>T H</i>) = <b>' + fmtUnit(phys.U0, 'vel') + '</b>';
+    if (thermal) {
+      extra = 'Prandtl-Zahl <i>Pr</i> = <i>ν</i>/<i>κ</i> = <b>' + fmt(phys.Pr) + '</b> · Freifallgeschwindigkeit √(<i>gβ</i>Δ<i>T H</i>) = <b>' + fmtUnit(phys.U0, 'vel') + '</b> · damit <i>Re</i> = <b>' + fmt(phys.Re) + '</b>';
     } else if (sc.kind === 'stir') {
       extra += '<br>Der Cursor bewegt sich maßstabsgetreu: eine Beckenhöhe pro Sekunde entspricht <b>' + fmtUnit(state.L, 'vel') + '</b>.';
     }
@@ -628,7 +644,12 @@
     const q = resolutionQuality();
     $('resInfo').innerHTML = 'Zell-Reynolds-Zahl <i>U</i>Δ<i>x</i>/<i>ν</i> = <b>' + fmt(1 / phys.nuG) + '</b> · Status: <b>' + q[0] + '</b>' +
       (glx.precision !== 32 ? '<br>Hinweis: Dieses Gerät rechnet nur mit 16-Bit-Gleitkomma – reduzierte Genauigkeit.' : '');
-    $('hint').textContent = (TOOLS.find((t) => t.id === state.tool) || TOOLS[0]).hint;
+    const hintText = (TOOLS.find((t) => t.id === state.tool) || TOOLS[0]).hint;
+    if ($('hint').textContent !== hintText) {
+      $('hint').textContent = hintText;
+      clearTimeout(hintTimer);
+      hintTimer = setTimeout(() => $('hint').classList.add('gone'), 9000);
+    }
     setPlayIcon();
     placeBrush();
   }
@@ -823,9 +844,12 @@
         const sc = state.scenario;
         let g = 0;
         for (let k = 0; k < n; k++) {
-          if (k % 20 === 0) { const st = solver.readStatsSync(); run.ub = st.cfl; }
-          g += solver.step(sc.kind === 'thermal' ? 4 : 2.5, Math.max(run.ub * 1.15, sc.kind === 'stir' ? 0.02 : sc.kind === 'thermal' ? 0.05 : 1)).dt;
+          if (k % 10 === 0) { const st = solver.readStatsSync(); run.ub = st.cfl; }
+          g += solver.step(sc.kind === 'thermal' ? 4 : 2.5, Math.max(run.ub * 1.25, sc.kind === 'stir' ? 0.02 : sc.kind === 'thermal' ? 0.05 : 1)).dt;
         }
+        run.ub = solver.readStatsSync().cfl;
+        run.ubHist = [run.ub];
+        run.statsMinSteps = solver.steps;
         run.simTime += g * phys.T0;
         return g;
       },

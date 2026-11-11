@@ -58,8 +58,8 @@ Tasten: Leertaste = Pause, `.` = Einzelschritt, `R` = Reset, `1`–`5` = Ansicht
 |---|---|
 | Gitter | versetztes MAC-Gitter (Harlow & Welch 1965), quadratische Zellen; Geschwindigkeiten auf Zellflächen, Druck und Skalare in Zellmitten |
 | Konvektion | finite Volumen in Divergenzform, zentrale Interpolation 2. Ordnung – erhält diskret Masse, Impuls und (reibungsfrei) kinetische Energie; optional bzw. automatisch lokal bei Zell-Péclet-Zahl > 2 QUICK-Aufwindkorrektur 3. Ordnung |
-| Zeit | SSP-Runge-Kutta 3. Ordnung (Shu & Osher 1988), Projektion in jeder Stufe, adaptiver Zeitschritt (CFL ≤ 0,8) |
-| Zähe Fluide | sobald die explizite Reibungsgrenze bindet (Zell-Reynolds-Zahl ≲ 1): inkrementelles Druckkorrekturverfahren mit Runge-Kutta-Tschebyschow-Stufen (stabilisiert explizit, 1. Ordnung in der Zeit, stationäre Zustände exakt) |
+| Zeit | SSP-Runge-Kutta 3. Ordnung (Shu & Osher 1988), Projektion in jeder Stufe, adaptiver Zeitschritt (CFL ≤ 0,75) |
+| Zähe Fluide | sobald die explizite Reibungsgrenze bindet (Zell-Reynolds-Zahl ≲ 1): inkrementelles Druckkorrekturverfahren; die Reibung wird mit gedämpften Runge-Kutta-Tschebyschow-Stufen 2. Ordnung integriert (stabilisiert explizit, stationäre Zustände exakt), Konvektion und Druckkopplung dort 1. Ordnung |
 | Druck | exakte diskrete Projektion; Poisson-Gleichung per geometrischem Mehrgitter (V-Zyklen, Rot-Schwarz-Gauß-Seidel, exakte Lösung auf dem gröbsten Gitter über vorab invertierte Matrix) |
 | Skalare | konservative Flussform, Aufwindverfahren 3. Ordnung mit Koren-Limiter (formerhaltend, keine Über-/Unterschwinger) |
 | Ränder | Haft- und Gleitwände, bewegte Wand, periodisch, Einstrom (gleichförmig, Parabel, Strahl), konvektiver Ausstrom mit Massenstromkorrektur |
@@ -80,7 +80,7 @@ siehe unten). Stand der Ergebnisse (Software-Rendering SwiftShader, 32-Bit-Gleit
 | Projektion | max. Divergenz eines Zufallsfeldes nach 8 Zyklen | 1,8 → 3·10⁻⁷ |
 | Taylor-Green-Wirbel (exakte Lösung) | kinetische Energie nach einer Halbwertszeit, N = 16 / 32 / 64 | Abweichung 0,89 % / 0,22 % / 0,058 % → **Ordnung 2,0 im Raum**; Zeitfehler < 3·10⁻⁵; Restdivergenz 6·10⁻⁸ |
 | Poiseuille-Strömung | stationäres Parabelprofil, explizit und im steifen Modus (ν bis 200) | Fehler = h² (0,39 % bei 16, 0,098 % bei 32 Zellen) – exakt der erwartete Diskretisierungsfehler |
-| Abklingende Scherwelle | Amplitude gegen exp(−νk²t) | RK3: 10⁻⁵; steifer Modus: 1. Ordnung in der Zeit |
+| Abklingende Scherwelle | Amplitude gegen exp(−νk²t) | RK3: 10⁻⁵; steifer Modus (RKC): 0,04 % bei Δt = 1, **Ordnung 2,0 in der Zeit** |
 | Deckelgetriebene Kavität, Re = 100, 64² | Geschwindigkeitsprofile auf den Mittellinien | max. Abweichung von Ghia et al. (1982): 0,004 (u), 0,009 (v). Extrema u_min = −0,2128, v_max = 0,1785, v_min = −0,2527 gegenüber hochgenauen Spektrallösungen (−0,2140 / 0,1796 / −0,2538, Botella & Peyret 1998): Abweichung ≤ 0,6 % |
 | Zylinder im Kanal, Re = 100 (Schäfer & Turek 1996, Fall 2D-2) | c_W,max, c_A,max, Strouhal-Zahl | siehe `tests/cylinder.js` |
 
@@ -94,8 +94,9 @@ siehe unten). Stand der Ergebnisse (Software-Rendering SwiftShader, 32-Bit-Gleit
 - **Auflösung ist endlich.** Bei großen Reynolds-Zahlen (z. B. Wasser im 1-m-Becken, Re ∼ 10⁶) sind die
   kleinsten Wirbel kleiner als das Gitter. Dann meldet die Seite „unteraufgelöst“; die QUICK-Korrektur
   wirkt als implizites Feinstrukturmodell – qualitativ plausibel, aber keine direkte numerische Simulation mehr.
-- **Sehr zähe Fluide** werden mit einem Verfahren 1. Ordnung in der Zeit integriert; stationäre Zustände sind
-  exakt, schnelle Einschwingvorgänge werden bei „Echtzeit“ nur grob aufgelöst (Zeitlupe wählen für mehr Genauigkeit).
+- **Sehr zähe Fluide** (Honig, Glycerin) gleichen Geschwindigkeitsunterschiede schneller aus, als ein Bild dauert.
+  Stationäre Zustände sind exakt; die Einschwingvorgänge selbst werden bei „Echtzeit“ nur mit wenigen Schritten
+  aufgelöst (Zeitlupe wählen, um sie genau zu verfolgen).
 - **Hindernisse** haben Treppenstufen-Genauigkeit (1. Ordnung); Kraftbeiwerte konvergieren entsprechend langsam.
 - **Stoffwerte** sind Richtwerte bei 20 °C; reale Fluide wie Honig sind temperaturabhängig und teils nicht-newtonsch.
 - **Echtzeit** hängt von der Grafikkarte ab. Reicht die Leistung nicht, läuft die Simulation ehrlich
@@ -133,7 +134,7 @@ node tests/cylinder.js 80 130    # Zylinder-Benchmark Schäfer & Turek (lang)
 - C.-W. Shu, S. Osher: *Efficient implementation of essentially non-oscillatory shock-capturing schemes*, J. Comput. Phys. 77 (1988).
 - B. P. Leonard: *A stable and accurate convective modelling procedure based on quadratic upstream interpolation*, Comput. Methods Appl. Mech. Eng. 19 (1979).
 - B. Koren: *A robust upwind discretization method for advection, diffusion and source terms*, in: Numerical Methods for Advection-Diffusion Problems (1993).
-- P. J. van der Houwen, B. P. Sommeijer: *On the internal stability of explicit m-stage Runge-Kutta methods for large m-values*, ZAMM 60 (1980).
+- B. P. Sommeijer, L. F. Shampine, J. G. Verwer: *RKC: An explicit solver for parabolic PDEs*, J. Comput. Appl. Math. 88 (1998).
 - E. A. Fadlun, R. Verzicco, P. Orlandi, J. Mohd-Yusof: *Combined immersed-boundary finite-difference methods for three-dimensional complex flow simulations*, J. Comput. Phys. 161 (2000).
 - U. Ghia, K. N. Ghia, C. T. Shin: *High-Re solutions for incompressible flow using the Navier-Stokes equations and a multigrid method*, J. Comput. Phys. 48 (1982).
 - O. Botella, R. Peyret: *Benchmark spectral results on the lid-driven cavity flow*, Comput. Fluids 27 (1998).
